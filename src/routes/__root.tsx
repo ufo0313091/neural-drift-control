@@ -71,15 +71,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#0a0a0a" },
+      { title: "Urge OS — 衝動を観察する" },
+      { name: "description", content: "衝動を可視化・観察・コントロールする行動変容OS。" },
+      { property: "og:title", content: "Urge OS — 衝動を観察する" },
+      { property: "og:description", content: "我慢ではなく、観察。脳との付き合い方を学ぶOS。" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
