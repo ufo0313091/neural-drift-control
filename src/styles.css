@@ -141,6 +141,20 @@
   50% { transform: translate3d(0,-6px,0); opacity: 0.8; }
 }
 
+@keyframes tide-in {
+  0% { transform: scale(0.85); opacity: 0.0; }
+  40% { opacity: 0.55; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes deep-breath {
+  0%, 100% { transform: scale(1); opacity: 0.55; filter: blur(28px); }
+  50% { transform: scale(1.12); opacity: 0.85; filter: blur(36px); }
+}
+@keyframes shimmer {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.55; }
+}
+
 @utility animate-pulse-ring {
   animation: pulse-ring 4s ease-in-out infinite;
 }
@@ -155,6 +169,15 @@
 }
 @utility animate-calm-drift {
   animation: calm-drift 12s ease-in-out infinite;
+}
+@utility animate-tide {
+  animation: tide-in 8s var(--ease-out-expo) infinite;
+}
+@utility animate-deep-breath {
+  animation: deep-breath 10s ease-in-out infinite;
+}
+@utility animate-shimmer {
+  animation: shimmer 6s ease-in-out infinite;
 }
 
 @layer base {
