@@ -100,6 +100,19 @@
     oklch(1 0 0 / 0.06),
     oklch(1 0 0 / 0)
   );
+  /* Warmth — 安心・落ち着き */
+  --warm: oklch(0.82 0.06 60);
+  --warm-glow: 0 0 32px oklch(0.82 0.06 60 / 0.18);
+  --gradient-calm: radial-gradient(
+    1200px 800px at 50% -10%,
+    oklch(0.88 0.16 200 / 0.06),
+    transparent 60%
+  ),
+  radial-gradient(
+    900px 600px at 80% 110%,
+    oklch(0.82 0.06 60 / 0.05),
+    transparent 60%
+  );
 }
 
 @keyframes pulse-ring {
@@ -123,6 +136,11 @@
   50% { transform: scale(1.18); opacity: 1; }
 }
 
+@keyframes calm-drift {
+  0%, 100% { transform: translate3d(0,0,0); opacity: 0.5; }
+  50% { transform: translate3d(0,-6px,0); opacity: 0.8; }
+}
+
 @utility animate-pulse-ring {
   animation: pulse-ring 4s ease-in-out infinite;
 }
@@ -135,6 +153,9 @@
 @utility animate-breath {
   animation: breath 8s ease-in-out infinite;
 }
+@utility animate-calm-drift {
+  animation: calm-drift 12s ease-in-out infinite;
+}
 
 @layer base {
   * {
@@ -144,6 +165,8 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    background-image: var(--gradient-calm);
+    background-attachment: fixed;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     font-feature-settings: "ss01", "cv11";

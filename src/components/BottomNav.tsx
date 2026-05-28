@@ -2,10 +2,10 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { Home, Activity, BookOpen, Settings as SettingsIcon } from "lucide-react";
 
 const items = [
-  { to: "/", label: "HOME", icon: Home },
-  { to: "/map", label: "MAP", icon: Activity },
-  { to: "/codex", label: "INDEX", icon: BookOpen },
-  { to: "/settings", label: "DATA", icon: SettingsIcon },
+  { to: "/", label: "ホーム", icon: Home },
+  { to: "/map", label: "マップ", icon: Activity },
+  { to: "/codex", label: "図鑑", icon: BookOpen },
+  { to: "/settings", label: "設定", icon: SettingsIcon },
 ] as const;
 
 export function BottomNav() {
@@ -25,7 +25,7 @@ export function BottomNav() {
               }
             >
               <Icon className="size-4" strokeWidth={1.5} />
-              <span className="font-mono text-[10px] tracking-tighter">{label}</span>
+              <span className="text-[10px] font-light tracking-wide">{label}</span>
             </Link>
           );
         })}
