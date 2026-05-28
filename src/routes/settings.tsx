@@ -36,36 +36,28 @@ function SettingsPage() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-6 pt-12 pb-32">
         <header className="animate-fade-in-up">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-            Data / Profile
-          </p>
+          <p className="text-[10px] tracking-[0.3em] text-accent">データ / プロフィール</p>
           <h1 className="mt-2 text-3xl font-extralight tracking-tight">設定</h1>
         </header>
 
         {profile && (
           <section className="mt-8 space-y-4">
             <div className="rounded-2xl border border-border bg-white/5 p-5">
-              <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                Goal
-              </p>
+              <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">目標</p>
               <p className="text-base font-medium">{profile.goal}</p>
             </div>
             <div className="rounded-2xl border border-border bg-white/5 p-5">
-              <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                Reason
-              </p>
+              <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">あなたの理由</p>
               <p className="text-base font-light leading-relaxed">「{profile.reason}」</p>
             </div>
             <div className="rounded-2xl border border-border bg-white/5 p-5">
-              <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                Voice
-              </p>
-              <p className="text-base font-medium capitalize">{profile.voice}</p>
+              <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">通知の声</p>
+              <p className="text-base font-medium">{
+                ({kind:"優しい", calm:"冷静", coach:"コーチ風", scientist:"科学者風", future:"未来の自分"} as const)[profile.voice]
+              }</p>
             </div>
             <div className="rounded-2xl border border-border bg-white/5 p-5">
-              <p className="mb-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                Total Observations
-              </p>
+              <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">記録の合計</p>
               <p className="text-base font-medium tabular-nums">{logs.length}</p>
             </div>
           </section>
@@ -93,7 +85,7 @@ function SettingsPage() {
         </section>
 
         <p className="mt-10 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          Urge OS / v0.1
+          衝動管理 / v0.1
         </p>
       </div>
       <BottomNav />

@@ -40,11 +40,12 @@ const ALTERNATIVES = [
 ];
 
 const ENCOURAGE = [
-  "波は永遠には続きません。",
-  "今、観察できているだけで前進。",
-  "ピークは必ず過ぎ去ります。",
-  "我慢ではなく、観察を。",
-  "脳の信号と、あなたは別のもの。",
+  "波は、必ず引いていきます。",
+  "気づけた時点で、もう前進しています。",
+  "ピークは数分で、必ず過ぎ去ります。",
+  "我慢ではなく、ただ眺めるだけでいい。",
+  "脳が出した信号と、あなた自身は別のものです。",
+  "今、立ち止まれた自分を、認めてあげて。",
 ];
 
 function SurfPage() {
@@ -116,20 +117,18 @@ function SurfPage() {
         onClick={() => navigate({ to: "/" })}
         className="absolute top-6 right-6 z-20 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
       >
-        ✕ Exit
+        ✕ 閉じる
       </button>
 
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-16 pb-10">
         {phase === "select" && (
           <div className="animate-fade-in-up">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-              Capture / 01
-            </p>
+            <p className="text-[10px] tracking-[0.3em] text-accent">記録 / 01</p>
             <h1 className="mt-2 text-3xl font-extralight tracking-tight">
-              今、どんな衝動?
+              今、どんな衝動がきた?
             </h1>
             <p className="mt-2 text-sm font-light text-muted-foreground">
-              ラベルをつけるだけで、前頭前野が動き始めます。
+              名前をつけるだけで、前頭前野が静かに動き始めます。
             </p>
             <div className="mt-8 grid grid-cols-2 gap-3">
               {URGE_OPTIONS.map(([k, v]) => (
@@ -150,12 +149,10 @@ function SurfPage() {
 
         {phase === "trigger" && (
           <div className="animate-fade-in-up">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-              Capture / 02
-            </p>
+            <p className="text-[10px] tracking-[0.3em] text-accent">記録 / 02</p>
             <h1 className="mt-2 text-3xl font-extralight tracking-tight">引き金は?</h1>
             <p className="mt-2 text-sm font-light text-muted-foreground">
-              判らなければスキップして大丈夫。
+              わからなくて大丈夫。スキップもできます。
             </p>
             <div className="mt-8 grid grid-cols-2 gap-3">
               {TRIGGER_OPTIONS.map(([k, v]) => (
@@ -175,16 +172,14 @@ function SurfPage() {
               onClick={() => setPhase("intensity")}
               className="mt-6 w-full text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
             >
-              Skip →
+              スキップ →
             </button>
           </div>
         )}
 
         {phase === "intensity" && (
           <div className="flex flex-1 flex-col animate-fade-in-up">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-              Capture / 03
-            </p>
+            <p className="text-[10px] tracking-[0.3em] text-accent">記録 / 03</p>
             <h1 className="mt-2 text-3xl font-extralight tracking-tight">強度は?</h1>
             <p className="mt-2 text-sm font-light text-muted-foreground">
               1（さざ波） 〜 10（津波）
@@ -210,7 +205,7 @@ function SurfPage() {
               onClick={startSurf}
               className="mt-10 w-full rounded-full bg-accent py-4 text-base font-medium text-accent-foreground shadow-[var(--accent-glow)] transition-opacity hover:opacity-90"
             >
-              90秒、波に乗る
+              90秒、波を眺める
             </button>
           </div>
         )}
@@ -218,9 +213,7 @@ function SurfPage() {
         {phase === "surf" && (
           <div className="flex flex-1 flex-col items-center justify-between gap-8 py-6">
             <div className="text-center animate-fade-in-up">
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-                Surfing Mode
-              </p>
+              <p className="text-[10px] tracking-[0.3em] text-accent">観察モード</p>
               <p className="mt-3 text-lg font-light">{encouragement}</p>
             </div>
 
@@ -248,25 +241,19 @@ function SurfPage() {
                 <span className="text-6xl font-extralight tabular-nums tracking-tighter">
                   {Math.ceil(remaining)}
                 </span>
-                <span className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Seconds
-                </span>
+                <span className="mt-1 text-[10px] tracking-widest text-muted-foreground">秒</span>
               </div>
             </div>
 
             {profile?.reason && (
               <div className="w-full max-w-xs rounded-2xl border border-border bg-white/5 p-4 text-center">
-                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  あなたの理由
-                </p>
+                <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">あなたの理由</p>
                 <p className="text-sm font-light leading-relaxed">「{profile.reason}」</p>
               </div>
             )}
 
             <div className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-center">
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-accent">
-                Alternative
-              </p>
+              <p className="mb-1 text-[10px] tracking-widest text-accent">別の小さな行動</p>
               <p className="text-base font-medium">{alternative}</p>
             </div>
 
@@ -274,21 +261,19 @@ function SurfPage() {
               onClick={() => setPhase("result")}
               className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
             >
-              Skip ahead →
+              先へ進む →
             </button>
           </div>
         )}
 
         {phase === "result" && (
           <div className="flex flex-1 flex-col justify-center animate-fade-in-up">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-              Observation Complete
-            </p>
+            <p className="text-[10px] tracking-[0.3em] text-accent">観察完了</p>
             <h1 className="mt-2 text-3xl font-extralight tracking-tight">
               今、どう感じる?
             </h1>
             <p className="mt-2 text-sm font-light text-muted-foreground">
-              どの答えでも、責められることはありません。
+              どの答えでも、ここでは責められません。記録できた時点で前進です。
             </p>
             <div className="mt-10 space-y-3">
               {(Object.keys(OUTCOME_LABELS) as Outcome[]).map((o) => (
@@ -309,14 +294,12 @@ function SurfPage() {
             <div className="flex size-20 items-center justify-center rounded-full border border-accent/40 shadow-[var(--accent-glow)]">
               <div className="size-3 rounded-full bg-accent" />
             </div>
-            <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-              Logged
-            </p>
+            <p className="mt-8 text-[10px] tracking-[0.3em] text-accent">記録完了</p>
             <h1 className="mt-3 text-3xl font-extralight tracking-tight">
-              次の1回を、整えよう。
+              気づけた自分を、まず認めよう。
             </h1>
             <p className="mt-3 max-w-[28ch] text-sm font-light leading-relaxed text-muted-foreground">
-              記録できた時点で前進です。脳のパターンが、少しずつ可視化されていきます。
+              結果がどうであれ、観察できたことが脳を変えていきます。次の1回を、静かに整えていきましょう。
             </p>
             <button
               onClick={() => navigate({ to: "/" })}
