@@ -248,6 +248,12 @@ function SurfPage() {
             >
               90秒、波を眺める
             </button>
+            {omakase && (
+              <div className="mt-4 rounded-2xl border border-accent/30 bg-accent/5 p-4 text-center">
+                <p className="text-[10px] tracking-widest text-accent">考えなくていい。まずこれ。</p>
+                <p className="mt-1 text-base font-medium">{omakase}</p>
+              </div>
+            )}
           </div>
         )}
 
