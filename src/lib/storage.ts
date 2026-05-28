@@ -9,6 +9,9 @@ export type UrgeType =
   | "smoke"
   | "alcohol"
   | "anger"
+  | "negative"
+  | "snack"
+  | "emotion"
   | "other";
 
 export type Trigger =
@@ -27,7 +30,7 @@ export interface UrgeLog {
   id: string;
   ts: number;
   type: UrgeType;
-  intensity: number; // 1-10
+  intensity: number;
   trigger?: Trigger;
   waitedSec: number;
   outcome?: Outcome;
@@ -38,13 +41,19 @@ export interface Profile {
   reason: string;
   voice: "kind" | "calm" | "coach" | "scientist" | "future";
   createdAt: number;
+  introSeen?: boolean;
+  vision?: string;
+  antiVision?: string;
+  altActions?: string[];
+  futureSelfDescription?: string;
+  futureSelfWords?: string;
 }
 
 const PROFILE_KEY = "urgeos.profile";
 const LOGS_KEY = "urgeos.logs";
 
 export const URGE_LABELS: Record<UrgeType, string> = {
-  food: "食欲",
+  food: "暴食",
   sns: "SNS",
   shopping: "衝動買い",
   latenight: "夜更かし",
@@ -52,6 +61,9 @@ export const URGE_LABELS: Record<UrgeType, string> = {
   smoke: "禁煙",
   alcohol: "禁酒",
   anger: "怒り",
+  negative: "ネガティブ思考",
+  snack: "間食",
+  emotion: "感情の波",
   other: "その他",
 };
 
@@ -144,9 +156,27 @@ export function useProfile() {
     setProfile(p);
     setP(p);
   }, []);
-  return { profile, ready, save };
+  const patch = useCallback((partial: Partial<Profile>) => {
+    const cur = getProfile();
+    if (!cur) return;
+    const next = { ...cur, ...partial };
+    setProfile(next);
+    setP(next);
+  }, []);
+  return { profile, ready, save, patch };
 }
 
 export function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+/** Format ms → "5分" / "1時間12分" / "2日3時間14分" */
+export function formatElapsed(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  if (days > 0) return `${days}日${hours}時間${mins}分`;
+  if (hours > 0) return `${hours}時間${mins}分`;
+  return `${mins}分`;
 }

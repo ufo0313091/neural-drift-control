@@ -17,35 +17,29 @@ export const Route = createFileRoute("/surf")({
   component: SurfPage,
 });
 
-type Phase = "select" | "trigger" | "intensity" | "surf" | "result" | "done";
+type Phase = "select" | "trigger" | "intensity" | "surf" | "result" | "acted" | "done";
 
 const URGE_OPTIONS = Object.entries(URGE_LABELS) as [UrgeType, string][];
 const TRIGGER_OPTIONS = Object.entries(TRIGGER_LABELS) as [Trigger, string][];
 
 const SURF_DURATION = 90;
 
-const ALTERNATIVES = [
+const DEFAULT_ALTERNATIVES = [
   "水を一杯飲む",
   "深呼吸を5回",
   "窓の外を10秒見る",
-  "スクワット15回",
   "肩を回してストレッチ",
   "歯を磨く",
   "白湯を入れる",
   "1分だけ外を歩く",
-  "ガムを噛む",
-  "腕立て10回",
-  "日光を浴びる",
-  "顔を冷水で洗う",
 ];
 
-const ENCOURAGE = [
-  "波は、必ず引いていきます。",
-  "気づけた時点で、もう前進しています。",
-  "ピークは数分で、必ず過ぎ去ります。",
-  "我慢ではなく、ただ眺めるだけでいい。",
-  "脳が出した信号と、あなた自身は別のものです。",
-  "今、立ち止まれた自分を、認めてあげて。",
+const PHASE_TEXT = [
+  { at: 0, text: "波が来た。ただ、眺めてみよう。" },
+  { at: 20, text: "上がっている。抗わなくていい。" },
+  { at: 40, text: "ピークは、必ず過ぎていく。" },
+  { at: 65, text: "少しずつ、引いていく感じ。" },
+  { at: 85, text: "波は、もう去ろうとしている。" },
 ];
 
 function SurfPage() {
@@ -59,13 +53,13 @@ function SurfPage() {
   const [remaining, setRemaining] = useState(SURF_DURATION);
   const startRef = useRef<number | null>(null);
 
+  const altActions = profile?.altActions?.length
+    ? profile.altActions
+    : DEFAULT_ALTERNATIVES;
+
   const alternative = useMemo(
-    () => ALTERNATIVES[Math.floor(Math.random() * ALTERNATIVES.length)],
-    [phase],
-  );
-  const encouragement = useMemo(
-    () => ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)],
-    [phase],
+    () => altActions[Math.floor(Math.random() * altActions.length)],
+    [phase, altActions],
   );
 
   useEffect(() => {
@@ -83,6 +77,13 @@ function SurfPage() {
     }, 100);
     return () => clearInterval(i);
   }, [phase]);
+
+  const elapsed = SURF_DURATION - remaining;
+  const currentText = useMemo(() => {
+    let cur = PHASE_TEXT[0].text;
+    for (const p of PHASE_TEXT) if (elapsed >= p.at) cur = p.text;
+    return cur;
+  }, [elapsed]);
 
   const startSurf = () => {
     if (!type) return;
@@ -106,10 +107,19 @@ function SurfPage() {
         : SURF_DURATION;
       updateLog(logId, { outcome, waitedSec: waited });
     }
-    setPhase("done");
+    if (outcome === "acted") setPhase("acted");
+    else setPhase("done");
   };
 
   const progress = 1 - remaining / SURF_DURATION;
+  // breathing rhythm: 4 in / 6 out → 10s cycle, map to scale 0.85–1.15
+  const breath = useMemo(() => {
+    const t = (elapsed % 10) / 10;
+    // sinusoidal breathing
+    const s = 1 + Math.sin(t * Math.PI * 2) * 0.13;
+    const phaseLabel = t < 0.4 ? "吸って" : t < 0.5 ? "止めて" : "吐いて";
+    return { scale: s, label: phaseLabel };
+  }, [elapsed]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -211,13 +221,39 @@ function SurfPage() {
         )}
 
         {phase === "surf" && (
-          <div className="flex flex-1 flex-col items-center justify-between gap-8 py-6">
+          <div className="relative flex flex-1 flex-col items-center justify-between gap-6 py-4">
+            {/* Deep ocean background */}
+            <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(60% 50% at 50% 60%, oklch(0.22 0.06 230 / 0.5), transparent 70%)",
+                }}
+              />
+              <div className="absolute left-1/2 top-1/2 size-[520px] -translate-x-1/2 -translate-y-1/2 animate-deep-breath rounded-full bg-accent/10 blur-3xl" />
+            </div>
+
             <div className="text-center animate-fade-in-up">
               <p className="text-[10px] tracking-[0.3em] text-accent">観察モード</p>
-              <p className="mt-3 text-lg font-light">{encouragement}</p>
+              <p className="mt-3 text-base font-light text-foreground/90 transition-opacity duration-700">
+                {currentText}
+              </p>
             </div>
 
             <div className="relative flex items-center justify-center">
+              {/* tide ripples */}
+              <div className="absolute size-72 animate-tide rounded-full border border-accent/30" />
+              <div
+                className="absolute size-72 animate-tide rounded-full border border-accent/20"
+                style={{ animationDelay: "2.6s" }}
+              />
+              <div
+                className="absolute size-72 animate-tide rounded-full border border-accent/15"
+                style={{ animationDelay: "5.2s" }}
+              />
+
+              {/* timer ring */}
               <svg viewBox="0 0 200 200" className="size-72 -rotate-90">
                 <circle cx="100" cy="100" r="90" stroke="oklch(1 0 0 / 0.06)" strokeWidth="2" fill="none" />
                 <circle
@@ -231,28 +267,38 @@ function SurfPage() {
                   strokeDashoffset={2 * Math.PI * 90 * (1 - progress)}
                   strokeLinecap="round"
                   className="transition-[stroke-dashoffset] duration-100"
-                  style={{ filter: "drop-shadow(0 0 6px oklch(0.88 0.16 200 / 0.6))" }}
+                  style={{ filter: "drop-shadow(0 0 8px oklch(0.88 0.16 200 / 0.7))" }}
                 />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="size-32 animate-breath rounded-full bg-accent/15 blur-2xl" />
-              </div>
+
+              {/* breathing orb */}
+              <div
+                className="absolute size-40 rounded-full bg-accent/20 blur-2xl transition-transform duration-1000 ease-in-out"
+                style={{ transform: `scale(${breath.scale})` }}
+              />
+              <div
+                className="absolute size-32 rounded-full border border-accent/40 bg-accent/5 transition-transform duration-1000 ease-in-out"
+                style={{ transform: `scale(${breath.scale})` }}
+              />
+
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-6xl font-extralight tabular-nums tracking-tighter">
                   {Math.ceil(remaining)}
                 </span>
-                <span className="mt-1 text-[10px] tracking-widest text-muted-foreground">秒</span>
+                <span className="mt-1 text-[10px] tracking-[0.3em] text-accent">
+                  {breath.label}
+                </span>
               </div>
             </div>
 
             {profile?.reason && (
-              <div className="w-full max-w-xs rounded-2xl border border-border bg-white/5 p-4 text-center">
+              <div className="w-full max-w-xs rounded-2xl border border-border bg-white/5 p-4 text-center backdrop-blur-sm">
                 <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">あなたの理由</p>
                 <p className="text-sm font-light leading-relaxed">「{profile.reason}」</p>
               </div>
             )}
 
-            <div className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-center">
+            <div className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-center backdrop-blur-sm">
               <p className="mb-1 text-[10px] tracking-widest text-accent">別の小さな行動</p>
               <p className="text-base font-medium">{alternative}</p>
             </div>
@@ -286,6 +332,45 @@ function SurfPage() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {phase === "acted" && (
+          <div className="flex flex-1 flex-col justify-center animate-fade-in-up">
+            <p className="text-[10px] tracking-[0.3em] text-accent">気づけた、それだけで前進</p>
+            <h1 className="mt-3 text-3xl font-extralight tracking-tight">
+              次の波が来たら、これを試そう。
+            </h1>
+            <p className="mt-3 text-sm font-light leading-relaxed text-muted-foreground">
+              実行した自分を責めなくていい。脳の癖は、何度も上書きすることで変わります。次の1回のために、いまできる小さな行動を眺めてみてください。
+            </p>
+            <div className="mt-8 space-y-2">
+              {altActions.map((a, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-white/5 p-4"
+                >
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-accent/40 font-mono text-[10px] text-accent">
+                    {i + 1}
+                  </div>
+                  <p className="text-sm font-light">{a}</p>
+                </div>
+              ))}
+            </div>
+            {!profile?.altActions?.length && (
+              <button
+                onClick={() => navigate({ to: "/future" })}
+                className="mt-6 w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-sm font-medium hover:border-accent/60"
+              >
+                自分専用の対策を設定する →
+              </button>
+            )}
+            <button
+              onClick={() => navigate({ to: "/" })}
+              className="mt-6 w-full rounded-full border border-border bg-white/5 py-3 text-sm font-medium hover:border-accent/40"
+            >
+              ホームへ戻る
+            </button>
           </div>
         )}
 

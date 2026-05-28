@@ -1,7 +1,13 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
-import { useLogs, useProfile, URGE_LABELS, TRIGGER_LABELS } from "@/lib/storage";
+import {
+  useLogs,
+  useProfile,
+  URGE_LABELS,
+  TRIGGER_LABELS,
+  formatElapsed,
+} from "@/lib/storage";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -16,6 +22,14 @@ function Home() {
     if (ready && !profile) navigate({ to: "/onboarding", replace: true });
   }, [ready, profile, navigate]);
 
+  // Real-time clock since this page mounted (or since last log if newer)
+  const mountTimeRef = useRef(Date.now());
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(i);
+  }, []);
+
   const today = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -23,9 +37,16 @@ function Home() {
   }, [logs]);
 
   const lastLog = logs[0];
-  const minutesSince = lastLog
-    ? Math.max(0, Math.round((Date.now() - lastLog.ts) / 60000))
-    : null;
+  // since last log (or since onboarding if no logs)
+  const referenceTs = lastLog?.ts ?? profile?.createdAt ?? mountTimeRef.current;
+  const elapsedMs = Math.max(0, now - referenceTs);
+  const elapsedLabel = formatElapsed(elapsedMs);
+
+  // 安定度: recovers from 0% to 100% over 6 hours since last log
+  const SIX_H = 6 * 60 * 60 * 1000;
+  const stability = lastLog
+    ? Math.min(100, Math.round((elapsedMs / SIX_H) * 100))
+    : 100;
 
   const triggerCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -36,8 +57,36 @@ function Home() {
   }, [logs]);
   const primaryTrigger = triggerCounts[0]?.[0] as keyof typeof TRIGGER_LABELS | undefined;
 
+  // Insight: combine trigger + urge type + hour pattern
+  const insight = useMemo(() => {
+    if (logs.length < 3) return null;
+    const recent = logs.slice(0, 30);
+    // find dominant trigger+type
+    const pair = new Map<string, number>();
+    for (const l of recent) {
+      const k = `${l.trigger ?? "?"}|${l.type}`;
+      pair.set(k, (pair.get(k) ?? 0) + 1);
+    }
+    const top = [...pair.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (!top || top[1] < 2) return null;
+    const [trg, typ] = top[0].split("|");
+    if (trg === "?") return null;
+    const t = TRIGGER_LABELS[trg as keyof typeof TRIGGER_LABELS];
+    const u = URGE_LABELS[typ as keyof typeof URGE_LABELS];
+    // hour pattern
+    const hours = recent.map((l) => new Date(l.ts).getHours());
+    const lateCount = hours.filter((h) => h >= 22 || h < 4).length;
+    const hint =
+      lateCount / hours.length > 0.4
+        ? "22時以降に集中する傾向があります。"
+        : "時間帯は分散しています。";
+    return `あなたは「${t}」を感じた時、「${u}」の衝動が起きやすい。${hint}`;
+  }, [logs]);
+
   if (!ready) return <div className="min-h-screen bg-background" />;
   if (!profile) return null;
+
+  const showFutureCTA = !profile.vision || !profile.altActions?.length;
 
   return (
     <div className="flex min-h-screen flex-col items-center overflow-hidden bg-background text-foreground">
@@ -48,20 +97,12 @@ function Home() {
             <h1 className="text-2xl font-light tracking-tight">手動運転モード</h1>
           </div>
           <div className="text-right">
-            <p className="text-[10px] tracking-widest text-accent">
-              {minutesSince !== null ? "前回から" : "安定度"}
+            <p className="text-[10px] tracking-widest text-accent">前回から</p>
+            <p className="text-2xl font-light tracking-tighter tabular-nums">
+              {elapsedLabel}
             </p>
-            <p className="text-2xl font-light tracking-tighter">
-              {minutesSince !== null ? (
-                <>
-                  {minutesSince}
-                  <span className="ml-0.5 text-sm text-muted-foreground">分</span>
-                </>
-              ) : (
-                <>
-                  100<span className="ml-0.5 text-sm text-muted-foreground">%</span>
-                </>
-              )}
+            <p className="mt-1 text-[10px] tracking-widest text-muted-foreground">
+              安定度 <span className="text-foreground/90 tabular-nums">{stability}%</span>
             </p>
           </div>
         </div>
@@ -73,6 +114,19 @@ function Home() {
             <p className="text-sm font-light leading-relaxed">「{profile.reason}」</p>
           </div>
         </div>
+
+        {showFutureCTA && (
+          <Link
+            to="/future"
+            className="mt-4 flex items-center justify-between rounded-2xl border border-accent/30 bg-accent/5 p-4 transition-colors hover:border-accent/60"
+          >
+            <div>
+              <p className="text-[10px] tracking-widest text-accent">まずはここを設定</p>
+              <p className="mt-1 text-sm font-medium">未来の自分を、設計する →</p>
+            </div>
+            <div className="size-2 rounded-full bg-accent shadow-[var(--accent-glow)]" />
+          </Link>
+        )}
       </header>
 
       <main className="relative flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-10">
@@ -100,12 +154,12 @@ function Home() {
         </Link>
 
         <p
-          className="mt-12 max-w-[24ch] animate-fade-in-up text-center text-sm font-light leading-relaxed text-muted-foreground"
+          className="mt-12 max-w-[28ch] animate-fade-in-up text-center text-sm font-light leading-relaxed text-muted-foreground"
           style={{ animationDelay: "400ms" }}
         >
-          欲求の波がきたら、
+          記録するほど、あなたの脳のパターンが見えてきます。
           <br />
-          一度だけ、静かに観察してみよう。
+          責めずに、ただ眺める。
         </p>
       </main>
 
@@ -113,6 +167,19 @@ function Home() {
         className="w-full max-w-md animate-fade-in-up space-y-4 px-6 pb-32"
         style={{ animationDelay: "600ms" }}
       >
+        {insight && (
+          <div className="rounded-2xl border border-accent/30 bg-accent/[0.05] p-4">
+            <p className="mb-1.5 text-[10px] tracking-widest text-accent">脳の発見</p>
+            <p className="text-sm font-light leading-relaxed">{insight}</p>
+            <Link
+              to="/map"
+              className="mt-3 inline-block font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            >
+              詳しく見る →
+            </Link>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl border border-border bg-white/5 p-4">
             <p className="mb-2 text-[10px] tracking-wider text-muted-foreground">今日の観察</p>

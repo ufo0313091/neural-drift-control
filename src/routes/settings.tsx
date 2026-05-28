@@ -71,6 +71,12 @@ function SettingsPage() {
             目標・理由を編集
           </button>
           <button
+            onClick={() => navigate({ to: "/future" })}
+            className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-left text-sm font-medium hover:border-accent/60"
+          >
+            未来設計を編集（理想・対策）
+          </button>
+          <button
             onClick={exportJson}
             className="w-full rounded-2xl border border-border bg-white/5 p-4 text-left text-sm font-medium hover:border-accent/40"
           >
