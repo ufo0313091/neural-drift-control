@@ -7,11 +7,19 @@ import {
   addLog,
   updateLog,
   uid,
+  useLogs,
   useProfile,
   type UrgeType,
   type Trigger,
   type Outcome,
 } from "@/lib/storage";
+import {
+  voiceCalmingLines,
+  voiceVisionPrefix,
+  voiceClosingLine,
+  suggestOneAction,
+  buildFeedback,
+} from "@/lib/voice";
 
 export const Route = createFileRoute("/surf")({
   component: SurfPage,
@@ -34,17 +42,10 @@ const DEFAULT_ALTERNATIVES = [
   "1分だけ外を歩く",
 ];
 
-const PHASE_TEXT = [
-  { at: 0, text: "波が来た。ただ、眺めてみよう。" },
-  { at: 20, text: "上がっている。抗わなくていい。" },
-  { at: 40, text: "ピークは、必ず過ぎていく。" },
-  { at: 65, text: "少しずつ、引いていく感じ。" },
-  { at: 85, text: "波は、もう去ろうとしている。" },
-];
-
 function SurfPage() {
   const navigate = useNavigate();
   const { profile } = useProfile();
+  const logs = useLogs();
   const [phase, setPhase] = useState<Phase>("select");
   const [type, setType] = useState<UrgeType | null>(null);
   const [trigger, setTrigger] = useState<Trigger | null>(null);
@@ -52,15 +53,16 @@ function SurfPage() {
   const [logId, setLogId] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(SURF_DURATION);
   const startRef = useRef<number | null>(null);
+  const [omakase, setOmakase] = useState<string>("");
 
   const altActions = profile?.altActions?.length
     ? profile.altActions
     : DEFAULT_ALTERNATIVES;
 
-  const alternative = useMemo(
-    () => altActions[Math.floor(Math.random() * altActions.length)],
-    [phase, altActions],
-  );
+  // Recompute おまかせ when type changes (chosen at urge selection)
+  useEffect(() => {
+    if (type) setOmakase(suggestOneAction(type, altActions));
+  }, [type, altActions]);
 
   useEffect(() => {
     if (phase !== "surf") return;
@@ -79,11 +81,22 @@ function SurfPage() {
   }, [phase]);
 
   const elapsed = SURF_DURATION - remaining;
-  const currentText = useMemo(() => {
-    let cur = PHASE_TEXT[0].text;
-    for (const p of PHASE_TEXT) if (elapsed >= p.at) cur = p.text;
-    return cur;
-  }, [elapsed]);
+
+  // Phase A/B/C messages driven by voice persona
+  const voice = profile?.voice ?? "calm";
+  const stageA = useMemo(() => voiceCalmingLines(voice), [voice]);
+  const stageBPrefix = useMemo(() => voiceVisionPrefix(voice), [voice]);
+  const stageCLine = useMemo(() => voiceClosingLine(voice), [voice]);
+
+  // Which stage are we in (0–30 / 30–60 / 60–90)
+  const stage: "A" | "B" | "C" = elapsed < 30 ? "A" : elapsed < 60 ? "B" : "C";
+  const stageALineIndex = Math.min(stageA.length - 1, Math.floor(elapsed / 10));
+  const currentText =
+    stage === "A"
+      ? stageA[stageALineIndex]
+      : stage === "B"
+        ? stageBPrefix
+        : stageCLine;
 
   const startSurf = () => {
     if (!type) return;
@@ -101,8 +114,9 @@ function SurfPage() {
   };
 
   const finishWithOutcome = (outcome: Outcome) => {
+    let waited = SURF_DURATION;
     if (logId) {
-      const waited = startRef.current
+      waited = startRef.current
         ? Math.round((Date.now() - startRef.current) / 1000)
         : SURF_DURATION;
       updateLog(logId, { outcome, waitedSec: waited });
@@ -110,6 +124,23 @@ function SurfPage() {
     if (outcome === "acted") setPhase("acted");
     else setPhase("done");
   };
+
+  // Build feedback shown on "done"
+  const feedback = useMemo(() => {
+    if (phase !== "done") return [];
+    const waited = startRef.current
+      ? Math.round((Date.now() - startRef.current) / 1000)
+      : SURF_DURATION;
+    const prev = logs.find((l) => l.id !== logId && l.waitedSec > 0)?.waitedSec;
+    return buildFeedback({
+      waitedSec: waited,
+      prevWaitedSec: prev,
+      hour: new Date().getHours(),
+      type: type ?? "other",
+      voice,
+      nextAction: omakase || altActions[0],
+    });
+  }, [phase, logId, logs, type, voice, omakase, altActions]);
 
   const progress = 1 - remaining / SURF_DURATION;
   // breathing rhythm: 4 in / 6 out → 10s cycle, map to scale 0.85–1.15
