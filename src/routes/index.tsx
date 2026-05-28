@@ -8,6 +8,7 @@ import {
   TRIGGER_LABELS,
   formatElapsed,
 } from "@/lib/storage";
+import { buildPersonalInsight } from "@/lib/protocols";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -57,31 +58,7 @@ function Home() {
   }, [logs]);
   const primaryTrigger = triggerCounts[0]?.[0] as keyof typeof TRIGGER_LABELS | undefined;
 
-  // Insight: combine trigger + urge type + hour pattern
-  const insight = useMemo(() => {
-    if (logs.length < 3) return null;
-    const recent = logs.slice(0, 30);
-    // find dominant trigger+type
-    const pair = new Map<string, number>();
-    for (const l of recent) {
-      const k = `${l.trigger ?? "?"}|${l.type}`;
-      pair.set(k, (pair.get(k) ?? 0) + 1);
-    }
-    const top = [...pair.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (!top || top[1] < 2) return null;
-    const [trg, typ] = top[0].split("|");
-    if (trg === "?") return null;
-    const t = TRIGGER_LABELS[trg as keyof typeof TRIGGER_LABELS];
-    const u = URGE_LABELS[typ as keyof typeof URGE_LABELS];
-    // hour pattern
-    const hours = recent.map((l) => new Date(l.ts).getHours());
-    const lateCount = hours.filter((h) => h >= 22 || h < 4).length;
-    const hint =
-      lateCount / hours.length > 0.4
-        ? "22時以降に集中する傾向があります。"
-        : "時間帯は分散しています。";
-    return `あなたは「${t}」を感じた時、「${u}」の衝動が起きやすい。${hint}`;
-  }, [logs]);
+  const insight = useMemo(() => buildPersonalInsight(logs, profile), [logs, profile]);
 
   if (!ready) return <div className="min-h-screen bg-background" />;
   if (!profile) return null;
