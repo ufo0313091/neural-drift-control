@@ -1,4 +1,5 @@
 import type { Profile, UrgeType } from "./storage";
+import { URGE_PROTOCOLS } from "./protocols";
 
 type Voice = Profile["voice"];
 
@@ -75,70 +76,10 @@ export function suggestOneAction(
   type: UrgeType,
   fallback: string[] = [],
 ): string {
-  const map: Record<UrgeType, string[]> = {
-    food: [
-      "水を一杯、ゆっくり飲む",
-      "歯を磨いてみる",
-      "白湯を入れる",
-      "プロテインを一口だけ",
-    ],
-    snack: [
-      "水を一杯、ゆっくり飲む",
-      "歯を磨いてみる",
-      "ガムを一粒だけ",
-    ],
-    sns: [
-      "スマホを画面ごと伏せる",
-      "通知を1時間だけ切る",
-      "1分だけ目を閉じる",
-    ],
-    shopping: [
-      "カートを閉じて、24時間置く",
-      "値段を時給で割ってみる",
-      "今ある物を3つ思い出す",
-    ],
-    latenight: [
-      "照明を1段落とす",
-      "画面を伏せて、明日の自分に一言書く",
-      "歯を磨いて、ベッドに移動するだけ",
-    ],
-    porn: [
-      "立ち上がって場所を変える",
-      "冷たい水で顔を洗う",
-      "20回スクワット",
-    ],
-    smoke: [
-      "水を一口、深呼吸を5回",
-      "外の空気を10秒",
-      "ガムを一粒だけ",
-    ],
-    alcohol: [
-      "炭酸水をグラスに注ぐ",
-      "白湯をゆっくり飲む",
-      "歯を磨いてみる",
-    ],
-    anger: [
-      "6秒、ゆっくり息を吐く",
-      "その場を離れて窓の外を見る",
-      "肩を一度大きく回す",
-    ],
-    negative: [
-      "頭の中の言葉を、紙に書き出す",
-      "事実と解釈を分けてみる",
-      "5つ、今見えているものを声に出す",
-    ],
-    emotion: [
-      "今の気持ちに、一言だけ名前をつける",
-      "息を6秒、吐ききる",
-      "胸に手を当てて10秒",
-    ],
-    other: [
-      "水を一杯、ゆっくり飲む",
-      "深呼吸を5回",
-      "1分だけ場所を変える",
-    ],
-  };
-  const pool = (map[type] && map[type].length ? map[type] : fallback);
+  // タイプ別エビデンスベース対策をプロトコルから採用
+  const pool = URGE_PROTOCOLS[type]?.alternatives?.length
+    ? URGE_PROTOCOLS[type].alternatives
+    : fallback;
   if (!pool.length) return "深呼吸を、5回だけ。";
   return pool[Math.floor(Math.random() * pool.length)];
 }

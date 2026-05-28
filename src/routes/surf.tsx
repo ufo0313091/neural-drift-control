@@ -20,6 +20,7 @@ import {
   suggestOneAction,
   buildFeedback,
 } from "@/lib/voice";
+import { URGE_PROTOCOLS, buildPersonalInsight } from "@/lib/protocols";
 
 export const Route = createFileRoute("/surf")({
   component: SurfPage,
@@ -338,6 +339,15 @@ function SurfPage() {
               </div>
             )}
 
+            {stage === "A" && type && (
+              <div className="w-full animate-fade-in-up rounded-2xl border border-border bg-white/[0.03] p-3 text-center">
+                <p className="text-[10px] tracking-widest text-muted-foreground">タイプ別メモ</p>
+                <p className="mt-1 text-xs font-light leading-relaxed text-foreground/80">
+                  {URGE_PROTOCOLS[type].calming}
+                </p>
+              </div>
+            )}
+
             {stage === "B" && (
               <div className="w-full animate-fade-in-up rounded-2xl border border-accent/30 bg-accent/5 p-4 backdrop-blur-sm">
                 <p className="mb-1 text-[10px] tracking-widest text-accent">未来設計</p>
@@ -470,6 +480,24 @@ function SurfPage() {
                   <p>{line}</p>
                 </div>
               ))}
+              {(() => {
+                const personal = buildPersonalInsight(logs, profile);
+                if (!personal) return null;
+                return (
+                  <div className="flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/[0.05] p-4 text-sm font-light leading-relaxed">
+                    <div className="mt-1 size-1.5 shrink-0 rounded-full bg-accent shadow-[var(--accent-glow)]" />
+                    <p>{personal}</p>
+                  </div>
+                );
+              })()}
+              {type && (
+                <div className="rounded-2xl border border-border bg-white/[0.03] p-4 text-xs font-light leading-relaxed text-muted-foreground">
+                  <p className="mb-1 text-[10px] tracking-widest text-accent">
+                    なぜ今のが効いたか
+                  </p>
+                  {URGE_PROTOCOLS[type].science}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/5 p-4">
