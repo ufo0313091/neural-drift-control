@@ -13,6 +13,7 @@ import { Route as SurfRouteImport } from './routes/surf'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MapRouteImport } from './routes/map'
+import { Route as FutureRouteImport } from './routes/future'
 import { Route as CodexRouteImport } from './routes/codex'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,6 +37,11 @@ const MapRoute = MapRouteImport.update({
   path: '/map',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FutureRoute = FutureRouteImport.update({
+  id: '/future',
+  path: '/future',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CodexRoute = CodexRouteImport.update({
   id: '/codex',
   path: '/codex',
@@ -50,6 +56,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/codex': typeof CodexRoute
+  '/future': typeof FutureRoute
   '/map': typeof MapRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/codex': typeof CodexRoute
+  '/future': typeof FutureRoute
   '/map': typeof MapRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/codex': typeof CodexRoute
+  '/future': typeof FutureRoute
   '/map': typeof MapRoute
   '/onboarding': typeof OnboardingRoute
   '/settings': typeof SettingsRoute
@@ -74,13 +83,28 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/codex' | '/map' | '/onboarding' | '/settings' | '/surf'
+  fullPaths:
+    | '/'
+    | '/codex'
+    | '/future'
+    | '/map'
+    | '/onboarding'
+    | '/settings'
+    | '/surf'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/codex' | '/map' | '/onboarding' | '/settings' | '/surf'
+  to:
+    | '/'
+    | '/codex'
+    | '/future'
+    | '/map'
+    | '/onboarding'
+    | '/settings'
+    | '/surf'
   id:
     | '__root__'
     | '/'
     | '/codex'
+    | '/future'
     | '/map'
     | '/onboarding'
     | '/settings'
@@ -90,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CodexRoute: typeof CodexRoute
+  FutureRoute: typeof FutureRoute
   MapRoute: typeof MapRoute
   OnboardingRoute: typeof OnboardingRoute
   SettingsRoute: typeof SettingsRoute
@@ -126,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/future': {
+      id: '/future'
+      path: '/future'
+      fullPath: '/future'
+      preLoaderRoute: typeof FutureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/codex': {
       id: '/codex'
       path: '/codex'
@@ -146,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CodexRoute: CodexRoute,
+  FutureRoute: FutureRoute,
   MapRoute: MapRoute,
   OnboardingRoute: OnboardingRoute,
   SettingsRoute: SettingsRoute,

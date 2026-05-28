@@ -7,7 +7,8 @@ export const Route = createFileRoute("/onboarding")({
 });
 
 const GOALS = [
-  "夜の暴食を減らしたい",
+  "暴食を減らしたい",
+  "間食のお菓子を辞めたい",
   "SNSを見る時間を減らしたい",
   "禁煙したい",
   "夜更かしを終わらせたい",
@@ -15,6 +16,8 @@ const GOALS = [
   "お酒との距離を整えたい",
   "衝動買いを止めたい",
   "ポルノ依存から抜け出したい",
+  "ネガティブ思考を減らしたい",
+  "感情に振り回されないようにしたい",
 ];
 
 const VOICES: { id: Profile["voice"]; label: string; desc: string }[] = [
@@ -22,7 +25,7 @@ const VOICES: { id: Profile["voice"]; label: string; desc: string }[] = [
   { id: "calm", label: "冷静", desc: "客観的な視点" },
   { id: "coach", label: "コーチ風", desc: "前向きに後押し" },
   { id: "scientist", label: "科学者風", desc: "脳の仕組みで説明" },
-  { id: "future", label: "未来の自分", desc: "ひとつ先のあなた" },
+  { id: "future", label: "未来の自分", desc: "ひとつ先のあなた（次の画面で設定）" },
 ];
 
 const REASON_EXAMPLES = [
@@ -35,7 +38,7 @@ const REASON_EXAMPLES = [
 function Onboarding() {
   const navigate = useNavigate();
   const { save } = useProfile();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(0); // 0=intro, 1=goal, 2=reason, 3=voice
   const [goal, setGoal] = useState("");
   const [customGoal, setCustomGoal] = useState("");
   const [reason, setReason] = useState("");
@@ -49,8 +52,10 @@ function Onboarding() {
       reason: reason.trim(),
       voice,
       createdAt: Date.now(),
+      introSeen: true,
     });
-    navigate({ to: "/", replace: true });
+    if (voice === "future") navigate({ to: "/future", replace: true });
+    else navigate({ to: "/", replace: true });
   };
 
   return (
@@ -58,22 +63,63 @@ function Onboarding() {
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-12 pb-10">
         <header className="mb-10 animate-fade-in-up">
           <p className="text-[10px] tracking-[0.3em] text-accent">
-            はじめに / {String(step + 1).padStart(2, "0")} / 03
+            はじめに / {String(step + 1).padStart(2, "0")} / 04
           </p>
           <h1 className="mt-2 text-3xl font-extralight tracking-tight">
-            {step === 0 && "目標を設定"}
-            {step === 1 && "なぜ、それを?"}
-            {step === 2 && "通知の人格を選択"}
+            {step === 0 && "なぜ、記録するのか?"}
+            {step === 1 && "目標を設定"}
+            {step === 2 && "なぜ、それを?"}
+            {step === 3 && "通知の人格を選択"}
           </h1>
           <p className="mt-2 text-sm font-light text-muted-foreground">
-            {step === 0 && "脳が向かう方向を、ひとつ。"}
-            {step === 1 && "“目標”ではなく、“人生の理由”を書いてください。衝動の瞬間、この言葉があなたを引き戻します。"}
-            {step === 2 && "あなたに語りかける声を選んでください。"}
+            {step === 0 && "我慢のためではありません。自分の脳のクセを、知るためです。"}
+            {step === 1 && "脳が向かう方向を、ひとつ。"}
+            {step === 2 && "“目標”ではなく、“人生の理由”を書いてください。衝動の瞬間、この言葉があなたを引き戻します。"}
+            {step === 3 && "あなたに語りかける声を選んでください。"}
           </p>
         </header>
 
         <main className="flex-1 animate-fade-in-up" style={{ animationDelay: "150ms" }}>
           {step === 0 && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-accent/30 bg-accent/[0.05] p-5">
+                <p className="text-[10px] tracking-widest text-accent">事実</p>
+                <p className="mt-2 text-sm font-light leading-relaxed">
+                  人間の衝動には、必ずパターンがあります。
+                </p>
+              </div>
+
+              <ul className="space-y-2">
+                {[
+                  "孤独な時に、SNSを開いてしまう。",
+                  "疲れている時に、甘いものが欲しくなる。",
+                  "金曜の夜、決まって買い物欲が湧く。",
+                  "睡眠不足の翌日は、感情が荒れる。",
+                ].map((t) => (
+                  <li
+                    key={t}
+                    className="flex items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm font-light"
+                  >
+                    <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-accent shadow-[var(--accent-glow)]" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="rounded-2xl border border-border bg-white/[0.04] p-5">
+                <p className="text-[10px] tracking-widest text-muted-foreground">このアプリの役割</p>
+                <p className="mt-2 text-sm font-light leading-relaxed">
+                  記録するたびに、あなただけの<span className="text-accent">「衝動の地図」</span>が描かれていきます。
+                  地図が描ければ、対策できる。対策できれば、人生が変わります。
+                </p>
+                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                  目的は「我慢」ではなく、「自分の脳を知ること」。失敗した時も、責めません。
+                </p>
+              </div>
+            </div>
+          )}
+
+          {step === 1 && (
             <div className="space-y-2">
               {GOALS.map((g) => (
                 <button
@@ -101,7 +147,7 @@ function Onboarding() {
             </div>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <div className="space-y-4">
               <div className="rounded-2xl border border-accent/20 bg-accent/[0.04] p-4">
                 <p className="mb-2 text-[10px] tracking-widest text-accent">書き方のヒント</p>
@@ -141,7 +187,7 @@ function Onboarding() {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <div className="space-y-2">
               {VOICES.map((v) => (
                 <button
@@ -178,10 +224,10 @@ function Onboarding() {
           >
             ← Back
           </button>
-          {step < 2 ? (
+          {step < 3 ? (
             <button
               onClick={() => setStep((s) => s + 1)}
-              disabled={(step === 0 && !finalGoal) || (step === 1 && !reason.trim())}
+              disabled={(step === 1 && !finalGoal) || (step === 2 && !reason.trim())}
               className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-30"
             >
               次へ →
