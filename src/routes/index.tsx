@@ -44,20 +44,18 @@ function Home() {
       <header className="w-full max-w-md animate-fade-in-up px-6 pt-12 pb-6">
         <div className="mb-8 flex items-end justify-between">
           <div className="space-y-1">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Current State
-            </p>
+            <p className="text-[10px] tracking-widest text-muted-foreground">現在の状態</p>
             <h1 className="text-2xl font-light tracking-tight">手動運転モード</h1>
           </div>
           <div className="text-right">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-accent">
-              {minutesSince !== null ? "Since last" : "Stability"}
+            <p className="text-[10px] tracking-widest text-accent">
+              {minutesSince !== null ? "前回から" : "安定度"}
             </p>
             <p className="text-2xl font-light tracking-tighter">
               {minutesSince !== null ? (
                 <>
                   {minutesSince}
-                  <span className="ml-0.5 text-sm text-muted-foreground">m</span>
+                  <span className="ml-0.5 text-sm text-muted-foreground">分</span>
                 </>
               ) : (
                 <>
@@ -68,13 +66,11 @@ function Home() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 rounded-2xl border border-border bg-white/5 p-4">
+        <div className="flex items-center gap-4 rounded-2xl border border-border bg-white/[0.04] p-4">
           <div className="size-2 animate-pulse rounded-full bg-accent shadow-[var(--accent-glow)]" />
           <div className="flex-1">
-            <p className="mb-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-              Your Reason
-            </p>
-            <p className="text-sm font-medium leading-snug">「{profile.reason}」</p>
+            <p className="mb-1 text-[10px] tracking-wider text-muted-foreground">あなたの理由</p>
+            <p className="text-sm font-light leading-relaxed">「{profile.reason}」</p>
           </div>
         </div>
       </header>
@@ -93,10 +89,8 @@ function Home() {
           className="group relative flex size-64 animate-fade-in-up flex-col items-center justify-center rounded-full border border-white/10 bg-black transition-colors duration-700 hover:border-accent/40 active:scale-[0.98]"
           style={{ animationDelay: "200ms" }}
         >
-          <span className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-            Override
-          </span>
-          <span className="text-4xl font-extralight tracking-tighter">衝動発生</span>
+          <span className="mb-3 text-[10px] tracking-[0.3em] text-accent">そっと観察する</span>
+          <span className="text-4xl font-extralight tracking-tight">衝動がきた</span>
           <div className="mt-4 flex items-end gap-1">
             <div className="h-3 w-1 rounded-full bg-accent/40" />
             <div className="h-5 w-1 rounded-full bg-accent shadow-[var(--accent-glow)]" />
@@ -109,9 +103,9 @@ function Home() {
           className="mt-12 max-w-[24ch] animate-fade-in-up text-center text-sm font-light leading-relaxed text-muted-foreground"
           style={{ animationDelay: "400ms" }}
         >
-          脳が信号を送ったら、
+          欲求の波がきたら、
           <br />
-          静かに観察を開始してください。
+          一度だけ、静かに観察してみよう。
         </p>
       </main>
 
@@ -121,26 +115,22 @@ function Home() {
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl border border-border bg-white/5 p-4">
-            <p className="mb-2 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-              Today's Pulse
-            </p>
+            <p className="mb-2 text-[10px] tracking-wider text-muted-foreground">今日の観察</p>
             <div className="flex items-baseline gap-1">
               <span className="text-xl font-light tabular-nums">
                 {String(today.length).padStart(2, "0")}
               </span>
-              <span className="text-[10px] text-muted-foreground">URGES</span>
+              <span className="text-[10px] text-muted-foreground">回</span>
             </div>
           </div>
           <div className="rounded-2xl border border-border bg-white/5 p-4">
-            <p className="mb-2 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-              Primary Trigger
-            </p>
+            <p className="mb-2 text-[10px] tracking-wider text-muted-foreground">主な引き金</p>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">
                 {primaryTrigger ? TRIGGER_LABELS[primaryTrigger] : "—"}
               </span>
               {primaryTrigger && (
-                <span className="font-mono text-[10px] text-accent">
+                <span className="text-[10px] text-accent">
                   ×{triggerCounts[0]?.[1]}
                 </span>
               )}
@@ -150,9 +140,7 @@ function Home() {
 
         {lastLog ? (
           <div className="rounded-2xl border border-border bg-white/5 p-4">
-            <p className="mb-3 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-              Latest Observation
-            </p>
+            <p className="mb-3 text-[10px] tracking-wider text-muted-foreground">最新の記録</p>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-base font-medium">{URGE_LABELS[lastLog.type]}</p>
@@ -161,14 +149,12 @@ function Home() {
                   {lastLog.trigger ? TRIGGER_LABELS[lastLog.trigger] : "—"}
                 </p>
               </div>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-accent">
-                Observed
-              </span>
+              <span className="text-[10px] tracking-wider text-accent">観察済</span>
             </div>
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-border/60 bg-white/[0.02] p-4 text-center text-xs text-muted-foreground">
-            最初の観察がここに残ります。
+            最初の観察が、ここに静かに残ります。
           </div>
         )}
       </section>

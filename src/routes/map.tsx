@@ -57,33 +57,29 @@ function MapPage() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-md px-6 pt-12 pb-32">
         <header className="animate-fade-in-up">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent">
-            Neural Map
-          </p>
-          <h1 className="mt-2 text-3xl font-extralight tracking-tight">衝動マップ</h1>
+          <p className="text-[10px] tracking-[0.3em] text-accent">脳のマップ</p>
+          <h1 className="mt-2 text-3xl font-extralight tracking-tight">欲求の波の記録</h1>
           <p className="mt-2 text-sm font-light text-muted-foreground">
-            あなたの脳のパターンを観察する。
+            あなたの脳のパターンを、責めずに眺める場所。
           </p>
         </header>
 
         <section className="mt-8 grid grid-cols-3 gap-3 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-          <Stat label="Total" value={String(total)} unit="LOGS" />
-          <Stat label="Avg wait" value={String(avgWait)} unit="SEC" />
+          <Stat label="合計" value={String(total)} unit="件" />
+          <Stat label="平均待機" value={String(avgWait)} unit="秒" />
           <Stat
-            label="Peak hour"
+            label="ピーク時刻"
             value={
               total
                 ? String(hourBuckets.indexOf(maxHour)).padStart(2, "0")
                 : "—"
             }
-            unit="H"
+            unit="時"
           />
         </section>
 
         <section className="mt-8 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
-          <h2 className="mb-4 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            24h Distribution
-          </h2>
+          <h2 className="mb-4 text-[10px] tracking-wider text-muted-foreground">24時間の分布</h2>
           <div className="rounded-2xl border border-border bg-white/5 p-5">
             <div className="flex h-32 items-end gap-[3px]">
               {hourBuckets.map((v, i) => (
@@ -109,12 +105,10 @@ function MapPage() {
         </section>
 
         <section className="mt-8 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
-          <h2 className="mb-4 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            Trigger Analysis
-          </h2>
+          <h2 className="mb-4 text-[10px] tracking-wider text-muted-foreground">引き金の分析</h2>
           {triggerStats.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-border bg-white/[0.02] p-4 text-center text-xs text-muted-foreground">
-              データが蓄積されると、AI分析がここに現れます。
+              観察を重ねると、あなたの引き金が静かに見えてきます。
             </p>
           ) : (
             <div className="space-y-2">
@@ -126,7 +120,7 @@ function MapPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{TRIGGER_LABELS[s.trigger]}</span>
                     <span className="font-mono text-[11px] text-accent">
-                      avg {s.avg.toFixed(1)} ・ ×{s.count}
+                      平均 {s.avg.toFixed(1)} ・ {s.count}回
                     </span>
                   </div>
                   <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/5">
@@ -143,9 +137,7 @@ function MapPage() {
 
         {typeStats.length > 0 && (
           <section className="mt-8 animate-fade-in-up" style={{ animationDelay: "400ms" }}>
-            <h2 className="mb-4 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              By Urge Type
-            </h2>
+            <h2 className="mb-4 text-[10px] tracking-wider text-muted-foreground">衝動の種類別</h2>
             <div className="rounded-2xl border border-border bg-white/5 p-5">
               {typeStats.map(([k, v]) => (
                 <div key={k} className="flex items-center justify-between py-2 text-sm">
@@ -165,12 +157,10 @@ function MapPage() {
 function Stat({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
     <div className="rounded-2xl border border-border bg-white/5 p-4">
-      <p className="mb-2 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
+      <p className="mb-2 text-[10px] tracking-wider text-muted-foreground">{label}</p>
       <div className="flex items-baseline gap-1">
         <span className="text-xl font-light tabular-nums">{value}</span>
-        <span className="font-mono text-[9px] text-muted-foreground">{unit}</span>
+        <span className="text-[10px] text-muted-foreground">{unit}</span>
       </div>
     </div>
   );
