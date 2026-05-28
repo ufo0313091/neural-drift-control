@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProfile, type Profile } from "@/lib/storage";
 
 export const Route = createFileRoute("/onboarding")({
@@ -43,6 +43,12 @@ function Onboarding() {
   const [customGoal, setCustomGoal] = useState("");
   const [reason, setReason] = useState("");
   const [voice, setVoice] = useState<Profile["voice"]>("calm");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, [step]);
 
   const finalGoal = customGoal.trim() || goal;
 

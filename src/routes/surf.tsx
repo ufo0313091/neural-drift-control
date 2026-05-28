@@ -7,11 +7,19 @@ import {
   addLog,
   updateLog,
   uid,
+  useLogs,
   useProfile,
   type UrgeType,
   type Trigger,
   type Outcome,
 } from "@/lib/storage";
+import {
+  voiceCalmingLines,
+  voiceVisionPrefix,
+  voiceClosingLine,
+  suggestOneAction,
+  buildFeedback,
+} from "@/lib/voice";
 
 export const Route = createFileRoute("/surf")({
   component: SurfPage,
@@ -34,17 +42,10 @@ const DEFAULT_ALTERNATIVES = [
   "1分だけ外を歩く",
 ];
 
-const PHASE_TEXT = [
-  { at: 0, text: "波が来た。ただ、眺めてみよう。" },
-  { at: 20, text: "上がっている。抗わなくていい。" },
-  { at: 40, text: "ピークは、必ず過ぎていく。" },
-  { at: 65, text: "少しずつ、引いていく感じ。" },
-  { at: 85, text: "波は、もう去ろうとしている。" },
-];
-
 function SurfPage() {
   const navigate = useNavigate();
   const { profile } = useProfile();
+  const logs = useLogs();
   const [phase, setPhase] = useState<Phase>("select");
   const [type, setType] = useState<UrgeType | null>(null);
   const [trigger, setTrigger] = useState<Trigger | null>(null);
@@ -52,15 +53,16 @@ function SurfPage() {
   const [logId, setLogId] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(SURF_DURATION);
   const startRef = useRef<number | null>(null);
+  const [omakase, setOmakase] = useState<string>("");
 
   const altActions = profile?.altActions?.length
     ? profile.altActions
     : DEFAULT_ALTERNATIVES;
 
-  const alternative = useMemo(
-    () => altActions[Math.floor(Math.random() * altActions.length)],
-    [phase, altActions],
-  );
+  // Recompute おまかせ when type changes (chosen at urge selection)
+  useEffect(() => {
+    if (type) setOmakase(suggestOneAction(type, altActions));
+  }, [type, altActions]);
 
   useEffect(() => {
     if (phase !== "surf") return;
@@ -79,11 +81,22 @@ function SurfPage() {
   }, [phase]);
 
   const elapsed = SURF_DURATION - remaining;
-  const currentText = useMemo(() => {
-    let cur = PHASE_TEXT[0].text;
-    for (const p of PHASE_TEXT) if (elapsed >= p.at) cur = p.text;
-    return cur;
-  }, [elapsed]);
+
+  // Phase A/B/C messages driven by voice persona
+  const voice = profile?.voice ?? "calm";
+  const stageA = useMemo(() => voiceCalmingLines(voice), [voice]);
+  const stageBPrefix = useMemo(() => voiceVisionPrefix(voice), [voice]);
+  const stageCLine = useMemo(() => voiceClosingLine(voice), [voice]);
+
+  // Which stage are we in (0–30 / 30–60 / 60–90)
+  const stage: "A" | "B" | "C" = elapsed < 30 ? "A" : elapsed < 60 ? "B" : "C";
+  const stageALineIndex = Math.min(stageA.length - 1, Math.floor(elapsed / 10));
+  const currentText =
+    stage === "A"
+      ? stageA[stageALineIndex]
+      : stage === "B"
+        ? stageBPrefix
+        : stageCLine;
 
   const startSurf = () => {
     if (!type) return;
@@ -101,8 +114,9 @@ function SurfPage() {
   };
 
   const finishWithOutcome = (outcome: Outcome) => {
+    let waited = SURF_DURATION;
     if (logId) {
-      const waited = startRef.current
+      waited = startRef.current
         ? Math.round((Date.now() - startRef.current) / 1000)
         : SURF_DURATION;
       updateLog(logId, { outcome, waitedSec: waited });
@@ -110,6 +124,23 @@ function SurfPage() {
     if (outcome === "acted") setPhase("acted");
     else setPhase("done");
   };
+
+  // Build feedback shown on "done"
+  const feedback = useMemo(() => {
+    if (phase !== "done") return [];
+    const waited = startRef.current
+      ? Math.round((Date.now() - startRef.current) / 1000)
+      : SURF_DURATION;
+    const prev = logs.find((l) => l.id !== logId && l.waitedSec > 0)?.waitedSec;
+    return buildFeedback({
+      waitedSec: waited,
+      prevWaitedSec: prev,
+      hour: new Date().getHours(),
+      type: type ?? "other",
+      voice,
+      nextAction: omakase || altActions[0],
+    });
+  }, [phase, logId, logs, type, voice, omakase, altActions]);
 
   const progress = 1 - remaining / SURF_DURATION;
   // breathing rhythm: 4 in / 6 out → 10s cycle, map to scale 0.85–1.15
@@ -217,6 +248,12 @@ function SurfPage() {
             >
               90秒、波を眺める
             </button>
+            {omakase && (
+              <div className="mt-4 rounded-2xl border border-accent/30 bg-accent/5 p-4 text-center">
+                <p className="text-[10px] tracking-widest text-accent">考えなくていい。まずこれ。</p>
+                <p className="mt-1 text-base font-medium">{omakase}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -291,17 +328,54 @@ function SurfPage() {
               </div>
             </div>
 
-            {profile?.reason && (
-              <div className="w-full max-w-xs rounded-2xl border border-border bg-white/5 p-4 text-center backdrop-blur-sm">
-                <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">あなたの理由</p>
+            {/* Stage-aware card under the orb */}
+            {stage === "A" && profile?.reason && (
+              <div className="w-full max-w-xs animate-fade-in-up rounded-2xl border border-border bg-white/5 p-4 text-center backdrop-blur-sm">
+                <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">
+                  まず、思い出してみよう
+                </p>
                 <p className="text-sm font-light leading-relaxed">「{profile.reason}」</p>
               </div>
             )}
 
-            <div className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-center backdrop-blur-sm">
-              <p className="mb-1 text-[10px] tracking-widest text-accent">別の小さな行動</p>
-              <p className="text-base font-medium">{alternative}</p>
-            </div>
+            {stage === "B" && (
+              <div className="w-full animate-fade-in-up rounded-2xl border border-accent/30 bg-accent/5 p-4 backdrop-blur-sm">
+                <p className="mb-1 text-[10px] tracking-widest text-accent">未来設計</p>
+                {profile?.vision ? (
+                  <p className="text-sm font-light leading-relaxed">{profile.vision}</p>
+                ) : (
+                  <p className="text-sm font-light leading-relaxed text-muted-foreground">
+                    この習慣を手放せたら、あなたはどんな自分になれますか？
+                    <br />（あとで「未来設計」から設定できます）
+                  </p>
+                )}
+                {profile?.voice === "future" && profile.futureSelfWords && (
+                  <p className="mt-3 border-t border-accent/20 pt-3 text-xs italic leading-relaxed text-foreground/80">
+                    未来の自分から：「{profile.futureSelfWords}」
+                  </p>
+                )}
+              </div>
+            )}
+
+            {stage === "C" && (
+              <div className="w-full animate-fade-in-up space-y-3">
+                <div className="rounded-2xl border border-accent/40 bg-accent/10 p-4 text-center backdrop-blur-sm">
+                  <p className="mb-1 text-[10px] tracking-widest text-accent">おまかせの一手</p>
+                  <p className="text-lg font-medium">{omakase}</p>
+                  <button
+                    onClick={() => type && setOmakase(suggestOneAction(type, altActions))}
+                    className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                  >
+                    別の提案 →
+                  </button>
+                </div>
+                {profile?.antiVision && (
+                  <div className="rounded-2xl border border-border bg-white/5 p-3 text-center text-xs font-light leading-relaxed text-muted-foreground">
+                    続けたままの未来：{profile.antiVision}
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               onClick={() => setPhase("result")}
@@ -375,20 +449,40 @@ function SurfPage() {
         )}
 
         {phase === "done" && (
-          <div className="flex flex-1 flex-col items-center justify-center text-center animate-fade-in-up">
-            <div className="flex size-20 items-center justify-center rounded-full border border-accent/40 shadow-[var(--accent-glow)]">
-              <div className="size-3 rounded-full bg-accent" />
+          <div className="flex flex-1 flex-col justify-center animate-fade-in-up">
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-accent/40 shadow-[var(--accent-glow)]">
+              <div className="size-2.5 rounded-full bg-accent" />
             </div>
-            <p className="mt-8 text-[10px] tracking-[0.3em] text-accent">記録完了</p>
-            <h1 className="mt-3 text-3xl font-extralight tracking-tight">
-              気づけた自分を、まず認めよう。
-            </h1>
-            <p className="mt-3 max-w-[28ch] text-sm font-light leading-relaxed text-muted-foreground">
-              結果がどうであれ、観察できたことが脳を変えていきます。次の1回を、静かに整えていきましょう。
+            <p className="mt-6 text-center text-[10px] tracking-[0.3em] text-accent">
+              記録完了 / 振り返り
             </p>
+            <h1 className="mt-2 text-center text-2xl font-extralight tracking-tight">
+              気づけたあなたへ。
+            </h1>
+
+            <div className="mt-8 space-y-2">
+              {feedback.map((line, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm font-light leading-relaxed"
+                >
+                  <div className="mt-1 size-1.5 shrink-0 rounded-full bg-accent shadow-[var(--accent-glow)]" />
+                  <p>{line}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/5 p-4">
+              <p className="mb-1 text-[10px] tracking-widest text-accent">次の一手</p>
+              <p className="text-base font-medium">{omakase || altActions[0]}</p>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                完璧にやらなくていい。覚えていたら、そっと試してみてください。
+              </p>
+            </div>
+
             <button
               onClick={() => navigate({ to: "/" })}
-              className="mt-10 rounded-full border border-border bg-white/5 px-6 py-3 text-sm font-medium hover:border-accent/40"
+              className="mt-8 w-full rounded-full border border-border bg-white/5 py-3 text-sm font-medium hover:border-accent/40"
             >
               ホームへ戻る
             </button>
