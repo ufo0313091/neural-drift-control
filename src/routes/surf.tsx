@@ -322,17 +322,54 @@ function SurfPage() {
               </div>
             </div>
 
-            {profile?.reason && (
-              <div className="w-full max-w-xs rounded-2xl border border-border bg-white/5 p-4 text-center backdrop-blur-sm">
-                <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">あなたの理由</p>
+            {/* Stage-aware card under the orb */}
+            {stage === "A" && profile?.reason && (
+              <div className="w-full max-w-xs animate-fade-in-up rounded-2xl border border-border bg-white/5 p-4 text-center backdrop-blur-sm">
+                <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">
+                  まず、思い出してみよう
+                </p>
                 <p className="text-sm font-light leading-relaxed">「{profile.reason}」</p>
               </div>
             )}
 
-            <div className="w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-center backdrop-blur-sm">
-              <p className="mb-1 text-[10px] tracking-widest text-accent">別の小さな行動</p>
-              <p className="text-base font-medium">{alternative}</p>
-            </div>
+            {stage === "B" && (
+              <div className="w-full animate-fade-in-up rounded-2xl border border-accent/30 bg-accent/5 p-4 backdrop-blur-sm">
+                <p className="mb-1 text-[10px] tracking-widest text-accent">未来設計</p>
+                {profile?.vision ? (
+                  <p className="text-sm font-light leading-relaxed">{profile.vision}</p>
+                ) : (
+                  <p className="text-sm font-light leading-relaxed text-muted-foreground">
+                    この習慣を手放せたら、あなたはどんな自分になれますか？
+                    <br />（あとで「未来設計」から設定できます）
+                  </p>
+                )}
+                {profile?.voice === "future" && profile.futureSelfWords && (
+                  <p className="mt-3 border-t border-accent/20 pt-3 text-xs italic leading-relaxed text-foreground/80">
+                    未来の自分から：「{profile.futureSelfWords}」
+                  </p>
+                )}
+              </div>
+            )}
+
+            {stage === "C" && (
+              <div className="w-full animate-fade-in-up space-y-3">
+                <div className="rounded-2xl border border-accent/40 bg-accent/10 p-4 text-center backdrop-blur-sm">
+                  <p className="mb-1 text-[10px] tracking-widest text-accent">おまかせの一手</p>
+                  <p className="text-lg font-medium">{omakase}</p>
+                  <button
+                    onClick={() => type && setOmakase(suggestOneAction(type, altActions))}
+                    className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                  >
+                    別の提案 →
+                  </button>
+                </div>
+                {profile?.antiVision && (
+                  <div className="rounded-2xl border border-border bg-white/5 p-3 text-center text-xs font-light leading-relaxed text-muted-foreground">
+                    続けたままの未来：{profile.antiVision}
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               onClick={() => setPhase("result")}
