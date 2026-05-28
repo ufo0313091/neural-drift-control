@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProfile, type Profile } from "@/lib/storage";
 
 export const Route = createFileRoute("/onboarding")({
@@ -10,14 +10,14 @@ const GOALS = [
   "暴食を減らしたい",
   "間食のお菓子を辞めたい",
   "SNSを見る時間を減らしたい",
-  "禁煙したい",
   "夜更かしを終わらせたい",
-  "集中できる自分に戻りたい",
+  "怒りに振り回されないようにしたい",
+  "ネガティブ思考を減らしたい",
+  "感情の波と上手く付き合いたい",
+  "禁煙したい",
   "お酒との距離を整えたい",
   "衝動買いを止めたい",
   "ポルノ依存から抜け出したい",
-  "ネガティブ思考を減らしたい",
-  "感情に振り回されないようにしたい",
 ];
 
 const VOICES: { id: Profile["voice"]; label: string; desc: string }[] = [
@@ -38,7 +38,8 @@ const REASON_EXAMPLES = [
 function Onboarding() {
   const navigate = useNavigate();
   const { save } = useProfile();
-  const [step, setStep] = useState(0); // 0=intro, 1=goal, 2=reason, 3=voice
+  // 0=welcome, 1=goal, 2=what-app-does, 3=voice, 4=reason, 5=first-breath
+  const [step, setStep] = useState(0);
   const [goal, setGoal] = useState("");
   const [customGoal, setCustomGoal] = useState("");
   const [reason, setReason] = useState("");
@@ -64,66 +65,36 @@ function Onboarding() {
     else navigate({ to: "/", replace: true });
   };
 
+  const TOTAL = 6;
+  const next = () => setStep((s) => Math.min(TOTAL - 1, s + 1));
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-12 pb-10">
-        <header className="mb-10 animate-fade-in-up">
-          <p className="text-[10px] tracking-[0.3em] text-accent">
-            はじめに / {String(step + 1).padStart(2, "0")} / 04
-          </p>
-          <h1 className="mt-2 text-3xl font-extralight tracking-tight">
-            {step === 0 && "なぜ、記録するのか?"}
-            {step === 1 && "目標を設定"}
-            {step === 2 && "なぜ、それを?"}
-            {step === 3 && "通知の人格を選択"}
-          </h1>
-          <p className="mt-2 text-sm font-light text-muted-foreground">
-            {step === 0 && "我慢のためではありません。自分の脳のクセを、知るためです。"}
-            {step === 1 && "脳が向かう方向を、ひとつ。"}
-            {step === 2 && "“目標”ではなく、“人生の理由”を書いてください。衝動の瞬間、この言葉があなたを引き戻します。"}
-            {step === 3 && "あなたに語りかける声を選んでください。"}
-          </p>
-        </header>
+        {step > 0 && (
+          <header className="mb-8 animate-fade-in-up">
+            <p className="text-[10px] tracking-[0.3em] text-accent">
+              {String(step).padStart(2, "0")} / {String(TOTAL - 1).padStart(2, "0")}
+            </p>
+            <h1 className="mt-2 text-3xl font-extralight tracking-tight">
+              {step === 1 && "直したい習慣を、ひとつ"}
+              {step === 2 && "このアプリでできること"}
+              {step === 3 && "あなたに語りかける声"}
+              {step === 4 && "なぜ、変わりたい?"}
+              {step === 5 && "30秒だけ、呼吸しよう"}
+            </h1>
+            <p className="mt-2 text-sm font-light text-muted-foreground">
+              {step === 1 && "“今いちばん気になっているもの”を選んでください。"}
+              {step === 2 && "難しい使い方はありません。"}
+              {step === 3 && "衝動の瞬間に、そっと現れる声です。"}
+              {step === 4 && "“目標”ではなく、“人生の理由”を一言で。"}
+              {step === 5 && "最初の成功体験を、ここで作ります。"}
+            </p>
+          </header>
+        )}
 
         <main className="flex-1 animate-fade-in-up" style={{ animationDelay: "150ms" }}>
-          {step === 0 && (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-accent/30 bg-accent/[0.05] p-5">
-                <p className="text-[10px] tracking-widest text-accent">事実</p>
-                <p className="mt-2 text-sm font-light leading-relaxed">
-                  人間の衝動には、必ずパターンがあります。
-                </p>
-              </div>
-
-              <ul className="space-y-2">
-                {[
-                  "孤独な時に、SNSを開いてしまう。",
-                  "疲れている時に、甘いものが欲しくなる。",
-                  "金曜の夜、決まって買い物欲が湧く。",
-                  "睡眠不足の翌日は、感情が荒れる。",
-                ].map((t) => (
-                  <li
-                    key={t}
-                    className="flex items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm font-light"
-                  >
-                    <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-accent shadow-[var(--accent-glow)]" />
-                    {t}
-                  </li>
-                ))}
-              </ul>
-
-              <div className="rounded-2xl border border-border bg-white/[0.04] p-5">
-                <p className="text-[10px] tracking-widest text-muted-foreground">このアプリの役割</p>
-                <p className="mt-2 text-sm font-light leading-relaxed">
-                  記録するたびに、あなただけの<span className="text-accent">「衝動の地図」</span>が描かれていきます。
-                  地図が描ければ、対策できる。対策できれば、人生が変わります。
-                </p>
-                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                  目的は「我慢」ではなく、「自分の脳を知ること」。失敗した時も、責めません。
-                </p>
-              </div>
-            </div>
-          )}
+          {step === 0 && <Welcome onStart={next} />}
 
           {step === 1 && (
             <div className="space-y-2">
@@ -154,6 +125,53 @@ function Onboarding() {
           )}
 
           {step === 2 && (
+            <ul className="space-y-2">
+              {[
+                ["衝動のピークを、90秒でやり過ごす", "観察モード"],
+                ["脳のクセを、AIが少しずつ可視化", "傾向分析"],
+                ["タイプ別に、効く対策をAIが提案", "おまかせ対策"],
+                ["“失敗”の概念がない、責めない設計", "セルフコンパッション"],
+              ].map(([t, tag]) => (
+                <li
+                  key={t}
+                  className="rounded-2xl border border-border bg-white/5 p-4"
+                >
+                  <p className="text-[10px] tracking-widest text-accent">{tag}</p>
+                  <p className="mt-1 text-sm font-light leading-relaxed">{t}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-2">
+              {VOICES.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setVoice(v.id)}
+                  className={
+                    "flex w-full items-center justify-between rounded-2xl border p-4 text-left transition-colors " +
+                    (voice === v.id
+                      ? "border-accent/50 bg-accent/10"
+                      : "border-border bg-white/5 hover:border-white/20")
+                  }
+                >
+                  <div>
+                    <p className="text-sm font-medium">{v.label}</p>
+                    <p className="text-xs text-muted-foreground">{v.desc}</p>
+                  </div>
+                  <div
+                    className={
+                      "size-2 rounded-full " +
+                      (voice === v.id ? "bg-accent shadow-[var(--accent-glow)]" : "bg-white/10")
+                    }
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {step === 4 && (
             <div className="space-y-4">
               <div className="rounded-2xl border border-accent/20 bg-accent/[0.04] p-4">
                 <p className="mb-2 text-[10px] tracking-widest text-accent">書き方のヒント</p>
@@ -193,61 +211,140 @@ function Onboarding() {
             </div>
           )}
 
-          {step === 3 && (
-            <div className="space-y-2">
-              {VOICES.map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => setVoice(v.id)}
-                  className={
-                    "flex w-full items-center justify-between rounded-2xl border p-4 text-left transition-colors " +
-                    (voice === v.id
-                      ? "border-accent/50 bg-accent/10"
-                      : "border-border bg-white/5 hover:border-white/20")
-                  }
-                >
-                  <div>
-                    <p className="text-sm font-medium">{v.label}</p>
-                    <p className="text-xs text-muted-foreground">{v.desc}</p>
-                  </div>
-                  <div
-                    className={
-                      "size-2 rounded-full " +
-                      (voice === v.id ? "bg-accent shadow-[var(--accent-glow)]" : "bg-white/10")
-                    }
-                  />
-                </button>
-              ))}
-            </div>
-          )}
+          {step === 5 && <BreathSuccess onDone={finish} />}
         </main>
 
-        <footer className="mt-10 flex items-center justify-between gap-4">
-          <button
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-            disabled={step === 0}
-            className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground disabled:opacity-30"
-          >
-            ← Back
-          </button>
-          {step < 3 ? (
+        {step > 0 && step < 5 && (
+          <footer className="mt-10 flex items-center justify-between gap-4">
             <button
-              onClick={() => setStep((s) => s + 1)}
-              disabled={(step === 1 && !finalGoal) || (step === 2 && !reason.trim())}
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground"
+            >
+              ← 戻る
+            </button>
+            <button
+              onClick={next}
+              disabled={
+                (step === 1 && !finalGoal) || (step === 4 && !reason.trim())
+              }
               className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-30"
             >
               次へ →
             </button>
-          ) : (
-            <button
-              onClick={finish}
-              className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-foreground shadow-[var(--accent-glow)] transition-opacity hover:opacity-90"
-            >
-              起動する
-            </button>
-          )}
-        </footer>
+          </footer>
+        )}
       </div>
+    </div>
+  );
+}
+
+function Welcome({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="flex min-h-[80vh] flex-col items-center justify-center text-center">
+      <div className="relative mb-12 flex items-center justify-center">
+        <div className="absolute size-48 animate-pulse-ring rounded-full border border-accent/20" />
+        <div
+          className="absolute size-64 animate-pulse-ring rounded-full border border-accent/10"
+          style={{ animationDelay: "1s" }}
+        />
+        <div className="size-32 rounded-full bg-accent/10 blur-2xl" />
+        <div className="absolute size-3 rounded-full bg-accent shadow-[var(--accent-glow)]" />
+      </div>
+      <h1 className="text-3xl font-extralight leading-snug tracking-tight">
+        衝動に、
+        <br />
+        振り回されない。
+      </h1>
+      <p className="mt-6 text-sm font-light leading-relaxed text-muted-foreground">
+        その90秒が、未来を変える。
+      </p>
+      <button
+        onClick={onStart}
+        className="mt-16 rounded-full bg-accent px-8 py-4 text-sm font-medium text-accent-foreground shadow-[var(--accent-glow)] transition-opacity hover:opacity-90"
+      >
+        さっそく始める
+      </button>
+      <p className="mt-6 text-[10px] tracking-widest text-muted-foreground">
+        / 我慢ではなく、観察のアプリです
+      </p>
+    </div>
+  );
+}
+
+function BreathSuccess({ onDone }: { onDone: () => void }) {
+  const [sec, setSec] = useState(30);
+  const [done, setDone] = useState(false);
+  const startRef = useRef(Date.now());
+  useEffect(() => {
+    const i = setInterval(() => {
+      const elapsed = (Date.now() - startRef.current) / 1000;
+      const rem = Math.max(0, 30 - elapsed);
+      setSec(rem);
+      if (rem <= 0) {
+        clearInterval(i);
+        setDone(true);
+      }
+    }, 100);
+    return () => clearInterval(i);
+  }, []);
+
+  const t = ((30 - sec) % 10) / 10;
+  const scale = 1 + Math.sin(t * Math.PI * 2) * 0.18;
+  const label = t < 0.4 ? "吸って" : t < 0.5 ? "止めて" : "吐いて";
+
+  if (done) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center text-center">
+        <div className="mb-8 flex size-16 items-center justify-center rounded-full border border-accent/40 shadow-[var(--accent-glow)]">
+          <div className="size-2.5 rounded-full bg-accent" />
+        </div>
+        <p className="text-[10px] tracking-[0.3em] text-accent">最初の30秒、完了</p>
+        <h2 className="mt-3 text-2xl font-extralight tracking-tight">
+          もう、始まっています。
+        </h2>
+        <p className="mt-4 max-w-[26ch] text-sm font-light leading-relaxed text-muted-foreground">
+          いま呼吸できた、それがあなたの最初の1回。
+          次に衝動がきたら、同じことをするだけです。
+        </p>
+        <button
+          onClick={onDone}
+          className="mt-12 rounded-full bg-accent px-8 py-4 text-sm font-medium text-accent-foreground shadow-[var(--accent-glow)] transition-opacity hover:opacity-90"
+        >
+          ホームへ
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+      <div className="relative flex items-center justify-center">
+        <div
+          className="absolute size-48 rounded-full bg-accent/20 blur-2xl transition-transform duration-1000 ease-in-out"
+          style={{ transform: `scale(${scale})` }}
+        />
+        <div
+          className="absolute size-36 rounded-full border border-accent/40 bg-accent/5 transition-transform duration-1000 ease-in-out"
+          style={{ transform: `scale(${scale})` }}
+        />
+        <div className="relative flex flex-col items-center">
+          <span className="text-6xl font-extralight tabular-nums tracking-tighter">
+            {Math.ceil(sec)}
+          </span>
+          <span className="mt-1 text-[10px] tracking-[0.3em] text-accent">
+            {label}
+          </span>
+        </div>
+      </div>
+      <p className="mt-12 text-xs font-light text-muted-foreground">
+        / 急がず、合わせなくていい
+      </p>
+      <button
+        onClick={() => setDone(true)}
+        className="mt-8 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+      >
+        スキップ →
+      </button>
     </div>
   );
 }
