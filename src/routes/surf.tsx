@@ -443,20 +443,40 @@ function SurfPage() {
         )}
 
         {phase === "done" && (
-          <div className="flex flex-1 flex-col items-center justify-center text-center animate-fade-in-up">
-            <div className="flex size-20 items-center justify-center rounded-full border border-accent/40 shadow-[var(--accent-glow)]">
-              <div className="size-3 rounded-full bg-accent" />
+          <div className="flex flex-1 flex-col justify-center animate-fade-in-up">
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-accent/40 shadow-[var(--accent-glow)]">
+              <div className="size-2.5 rounded-full bg-accent" />
             </div>
-            <p className="mt-8 text-[10px] tracking-[0.3em] text-accent">記録完了</p>
-            <h1 className="mt-3 text-3xl font-extralight tracking-tight">
-              気づけた自分を、まず認めよう。
-            </h1>
-            <p className="mt-3 max-w-[28ch] text-sm font-light leading-relaxed text-muted-foreground">
-              結果がどうであれ、観察できたことが脳を変えていきます。次の1回を、静かに整えていきましょう。
+            <p className="mt-6 text-center text-[10px] tracking-[0.3em] text-accent">
+              記録完了 / 振り返り
             </p>
+            <h1 className="mt-2 text-center text-2xl font-extralight tracking-tight">
+              気づけたあなたへ。
+            </h1>
+
+            <div className="mt-8 space-y-2">
+              {feedback.map((line, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm font-light leading-relaxed"
+                >
+                  <div className="mt-1 size-1.5 shrink-0 rounded-full bg-accent shadow-[var(--accent-glow)]" />
+                  <p>{line}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/5 p-4">
+              <p className="mb-1 text-[10px] tracking-widest text-accent">次の一手</p>
+              <p className="text-base font-medium">{omakase || altActions[0]}</p>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                完璧にやらなくていい。覚えていたら、そっと試してみてください。
+              </p>
+            </div>
+
             <button
               onClick={() => navigate({ to: "/" })}
-              className="mt-10 rounded-full border border-border bg-white/5 px-6 py-3 text-sm font-medium hover:border-accent/40"
+              className="mt-8 w-full rounded-full border border-border bg-white/5 py-3 text-sm font-medium hover:border-accent/40"
             >
               ホームへ戻る
             </button>
