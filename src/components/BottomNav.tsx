@@ -1,10 +1,10 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, Activity, HelpCircle, Settings as SettingsIcon } from "lucide-react";
+import { Home, Activity, Award, Settings as SettingsIcon } from "lucide-react";
 
 const items = [
   { to: "/", label: "ホーム", icon: Home },
   { to: "/map", label: "マップ", icon: Activity },
-  { to: "/help", label: "ヘルプ", icon: HelpCircle },
+  { to: "/achievements", label: "実績", icon: Award },
   { to: "/settings", label: "設定", icon: SettingsIcon },
 ] as const;
 

@@ -124,6 +124,9 @@ function SettingsPage() {
         </section>
 
         <div className="mt-10 flex flex-col items-center gap-3">
+          <Link to="/help" className="text-[10px] tracking-widest text-muted-foreground hover:text-foreground">
+            ヘルプ・よくある質問
+          </Link>
           <Link to="/privacy" className="text-[10px] tracking-widest text-muted-foreground hover:text-foreground">
             プライバシーポリシー
           </Link>

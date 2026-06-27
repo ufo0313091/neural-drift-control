@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { AddToHomeScreen } from "@/components/AddToHomeScreen";
 import {
@@ -11,6 +11,7 @@ import {
   type UrgeType,
 } from "@/lib/storage";
 import { calcTypeStat } from "@/lib/protocols";
+import { getNewlyEarned, type Achievement } from "@/lib/achievements";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -39,6 +40,13 @@ function Home() {
   const overcomeCount = useMemo(() => calcOvercomeCount(logs), [logs]);
   const primaryType: UrgeType = profile?.primaryType ?? "other";
   const typeStat = overcomeCount > 0 ? calcTypeStat(overcomeCount, primaryType) : null;
+
+  const [newAchievements, setNewAchievements] = useState<Achievement[]>([]);
+  useEffect(() => {
+    if (!profile) return;
+    const newOnes = getNewlyEarned(logs, profile);
+    if (newOnes.length > 0) setNewAchievements(newOnes);
+  }, [logs, profile]);
 
   const showFutureCTA = !profile?.vision || !profile?.altActions?.length;
 
@@ -89,6 +97,24 @@ function Home() {
             <p className="font-light leading-relaxed text-muted-foreground">
               神経科学の研究で、感情の波のピークは<span className="text-foreground">約90秒</span>で収まることがわかっています。衝動が来た瞬間にここを開いて、波が引くのをただ観察してみましょう。
             </p>
+          </div>
+        )}
+
+        {/* 新実績バナー */}
+        {newAchievements.length > 0 && (
+          <div className="animate-fade-in-up space-y-2" style={{ animationDelay: "280ms" }}>
+            {newAchievements.map((a) => (
+              <Link key={a.id} to="/achievements"
+                className="flex items-center gap-3 rounded-2xl border border-accent/50 bg-accent/10 px-4 py-3 shadow-[0_0_20px_oklch(0.88_0.16_200/0.2)]"
+                onClick={() => setNewAchievements((prev) => prev.filter((x) => x.id !== a.id))}>
+                <span className="text-2xl">{a.icon}</span>
+                <div>
+                  <p className="text-[9px] tracking-widest text-accent">バッジ獲得</p>
+                  <p className="text-sm font-medium">{a.title}</p>
+                </div>
+                <span className="ml-auto text-[10px] text-muted-foreground">→</span>
+              </Link>
+            ))}
           </div>
         )}
 
