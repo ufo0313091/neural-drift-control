@@ -1,113 +1,105 @@
 import type { Profile, UrgeType } from "./storage";
-import { URGE_PROTOCOLS } from "./protocols";
 
 type Voice = Profile["voice"];
 
-/** Stage A: 0–30s — まず落ち着かせる */
+const CALMING_LINES: Record<Voice, string[][]> = {
+  kind: [
+    ["今がいちばんきつい時間。あと少しで楽になる。","何もしなくていい。ただ呼吸して。","波はかならず引く。それを確かめるだけでいい。"],
+    ["ここにいるだけで十分。逃げなくていい。","衝動を感じている自分は、弱くない。気づいている証拠。","少しだけ、ここにいてみよう。"],
+    ["残りわずか。あなたはここにいる。","今この瞬間、選んでいる。それだけでいい。","もう少しだけ、一緒にいる。"],
+  ],
+  calm: [
+    ["今がいちばんきつい時間。あと少しで楽になる。","何もしなくていい。ただ呼吸して。","波はかならず引く。それを確かめるだけでいい。"],
+    ["感情は一時的な化学反応。90秒で変化が始まる。","今の状態を観察する。評価しなくていい。","衝動のピークは過ぎていく。データとして確認するだけでいい。"],
+    ["ここまで来た。あと少しで変化のポイント。","脳のパターンを変えている瞬間。","今日の記録が、変化の証拠になる。"],
+  ],
+  coach: [
+    ["今がいちばんきつい時間。あと少しで楽になる。","この感覚、乗り越えた回数だけ次が楽になる。","ここで止まれると、未来が変わる。"],
+    ["あと半分。ここからが本番。","今の自分を誇っていい。止まることを選んでいる。","乗り越えるたびに、強くなっている。"],
+    ["あと少し。最後まで行こう。","止まれた瞬間が、あなたの新しい記録になる。","できる。やれる。もうすぐ。"],
+  ],
+  scientist: [
+    ["ドーパミンの波が来ている。90秒で落ち着き始める。","脳の報酬回路が活性化中。観察するだけでいい。","この反応は生理的なもの。意志力ではなく、時間が解決する。"],
+    ["前頭前野が回復してきた。理性的な判断ができる状態に近づいている。","神経可塑性が働いている。今の選択が脳の配線を変える。","ストレスホルモンのピークが過ぎた。落ち着きが戻ってきている。"],
+    ["90秒の神経科学的根拠が証明されている。もうすぐ完了。","新しい神経回路が形成されつつある。","今回の我慢が、次回の閾値を下げる。"],
+  ],
+  future: [
+    ["未来の自分がここを見ている。止まれているのを知っている。","今の選択が、なりたい自分への一歩。","ここを越えた先に、あなたが目指している自分がいる。"],
+    ["未来の自分は今、あなたを応援している。","この瞬間を選んでいることを、未来の自分は覚えている。","なりたい自分は、ここを越えた先にいる。"],
+    ["あと少し。未来の自分が待っている。","今日の選択が、未来の自分を作る。","乗り越えた先の自分を、想像してみて。"],
+  ],
+};
+
+const VISION_PREFIXES: Record<Voice, string> = {
+  kind: "あなたが大切にしているもの、思い出して。",
+  calm: "目標を確認する時間。",
+  coach: "なぜ変わりたいか。それを今、思い出そう。",
+  scientist: "目標は行動の指針。今がその判断ポイント。",
+  future: "未来の自分から、今のあなたへ。",
+};
+
+const CLOSING_LINES: Record<Voice, string> = {
+  kind: "あと少し。一緒にいるから。",
+  calm: "完了まであとわずか。そのまま待つ。",
+  coach: "ラストスパート。今がいちばん大事な時間。",
+  scientist: "90秒完了まであとわずか。脳の変化が起きている。",
+  future: "もうすぐ。未来の自分が近づいてくる。",
+};
+
 export function voiceCalmingLines(voice: Voice): string[] {
-  switch (voice) {
-    case "kind":
-      return [
-        "大丈夫。今は波が強いだけです。",
-        "あなたの意志の弱さではありません。脳の反応です。",
-        "まず90秒だけ、一緒に眺めてみましょう。",
-      ];
-    case "calm":
-      return [
-        "現在、衝動はピーク付近です。",
-        "これは報酬系の自動反応で、必ず減衰します。",
-        "90秒の観察を開始します。判断はあとで構いません。",
-      ];
-    case "coach":
-      return [
-        "今すぐ決めなくていい。まず90秒。",
-        "意志ではなく、姿勢を立て直そう。",
-        "波に飲まれない。まず観る。",
-      ];
-    case "future":
-      return [
-        "ここで止まれたあなたを、私はちゃんと覚えています。",
-        "あの90秒があったから、私は今ここにいる。",
-        "今は何もしなくていい。ただ呼吸して。",
-      ];
-    case "scientist":
-      return [
-        "これは前頭前野ではなく、報酬系・扁桃体の反応です。",
-        "ドーパミンのスパイクは数十秒で減衰します。",
-        "意志の問題ではなく、刺激と環境の問題です。",
-      ];
-  }
+  const stages = CALMING_LINES[voice];
+  return stages[0];
 }
 
-/** Stage B: 30–60s — 未来設計を呼び戻す */
 export function voiceVisionPrefix(voice: Voice): string {
-  switch (voice) {
-    case "kind":
-      return "あなたが描いた未来を、もう一度。";
-    case "calm":
-      return "あなた自身が定義した未来像を参照します。";
-    case "coach":
-      return "目を逸らすな。お前が決めた未来だ。";
-    case "future":
-      return "私（未来のあなた）から、ひとつだけ伝えさせて。";
-    case "scientist":
-      return "長期報酬の再認識フェーズです。";
-  }
+  return VISION_PREFIXES[voice];
 }
 
-/** Stage C: 60–90s — 次の一手・伴走の言葉 */
 export function voiceClosingLine(voice: Voice): string {
-  switch (voice) {
-    case "kind":
-      return "ここまで観察できた自分を、まず認めてあげて。";
-    case "calm":
-      return "波は減衰局面に入りました。次の一手だけ選びましょう。";
-    case "coach":
-      return "ここまで来た。次の小さな1手で決める。";
-    case "future":
-      return "未来のあなたは、今の90秒をちゃんと覚えています。";
-    case "scientist":
-      return "報酬系の反応は弱まりました。代替行動で上書きしましょう。";
+  return CLOSING_LINES[voice];
+}
+
+export function suggestOneAction(type: UrgeType, altActions: string[]): string {
+  if (altActions.length) {
+    return altActions[Math.floor(Math.random() * altActions.length)];
   }
+  const defaults: Record<string, string> = {
+    food: "水を一杯、ゆっくり飲む",
+    snack: "歯を磨く",
+    sns: "スマホを画面ごと伏せて30秒",
+    shopping: "カートに入れたまま24時間置く",
+    latenight: "部屋の照明を一段落とす",
+    porn: "立ち上がって部屋を出る",
+    smoke: "深呼吸を5回",
+    alcohol: "炭酸水をグラスに注ぐ",
+    anger: "ゆっくり6秒、息を吐ききる",
+    negative: "今見えているものを5つ声に出す",
+    emotion: "胸に手を当てて10秒間そのまま",
+    approval: "今日良かった瞬間を手帳にひとこと書く",
+    procrastination: "2分だけやるとタイマーをセットする",
+  };
+  return defaults[type] ?? "深呼吸を5回";
 }
 
-/** “おまかせ対策” — 衝動タイプから1つだけ提案する */
-export function suggestOneAction(
-  type: UrgeType,
-  fallback: string[] = [],
-): string {
-  // タイプ別エビデンスベース対策をプロトコルから採用
-  const pool = URGE_PROTOCOLS[type]?.alternatives?.length
-    ? URGE_PROTOCOLS[type].alternatives
-    : fallback;
-  if (!pool.length) return "深呼吸を、5回だけ。";
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-/** 終了後フィードバック生成 */
-export function buildFeedback(args: {
+export function buildFeedback(opts: {
   waitedSec: number;
   prevWaitedSec?: number;
   hour: number;
   type: UrgeType;
   voice: Voice;
-  nextAction?: string;
+  nextAction: string;
 }): string[] {
-  const out: string[] = [];
-  out.push(`今回は${Math.round(args.waitedSec)}秒、観察できました。`);
-  if (args.prevWaitedSec !== undefined) {
-    const diff = Math.round(args.waitedSec - args.prevWaitedSec);
-    if (diff > 5) out.push(`前回より${diff}秒長く観察できました。`);
-    else if (diff < -5) out.push("前回より短くなりましたが、記録できたこと自体が前進です。");
-    else out.push("前回と同じくらい、安定して観察できました。");
+  const lines: string[] = [];
+  if (opts.waitedSec >= 60) {
+    lines.push(`${opts.waitedSec}秒、ここにいた。それだけで脳に新しい回路が生まれている。`);
+  } else {
+    lines.push(`${opts.waitedSec}秒、止まれた。次はもう少し長くいられる。`);
   }
-  if (args.hour >= 22 || args.hour < 4) {
-    out.push("深夜帯は前頭前野が弱まりやすい時間です。睡眠が一番効きます。");
-  } else if (args.hour >= 14 && args.hour < 17) {
-    out.push("午後の血糖変動による衝動の可能性があります。");
+  if (opts.prevWaitedSec && opts.waitedSec > opts.prevWaitedSec) {
+    lines.push(`前回より${opts.waitedSec - opts.prevWaitedSec}秒長く待てた。`);
   }
-  if (args.nextAction) {
-    out.push(`次は「${args.nextAction}」を試してみましょう。`);
+  if (opts.hour >= 22 || opts.hour < 4) {
+    lines.push("深夜は衝動が強くなりやすい時間帯。今止まれたのは、それだけ価値がある。");
   }
-  return out;
+  return lines;
 }

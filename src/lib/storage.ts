@@ -12,6 +12,8 @@ export type UrgeType =
   | "negative"
   | "snack"
   | "emotion"
+  | "approval"
+  | "procrastination"
   | "other";
 
 export type Trigger =
@@ -38,6 +40,7 @@ export interface UrgeLog {
 
 export interface Profile {
   goal: string;
+  primaryType: UrgeType;
   reason: string;
   voice: "kind" | "calm" | "coach" | "scientist" | "future";
   createdAt: number;
@@ -64,6 +67,8 @@ export const URGE_LABELS: Record<UrgeType, string> = {
   negative: "ネガティブ思考",
   snack: "間食",
   emotion: "感情の波",
+  approval: "承認欲求",
+  procrastination: "先延ばし",
   other: "その他",
 };
 
@@ -170,7 +175,6 @@ export function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-/** Format ms → "5分" / "1時間12分" / "2日3時間14分" */
 export function formatElapsed(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const days = Math.floor(totalSec / 86400);
@@ -179,4 +183,48 @@ export function formatElapsed(ms: number): string {
   if (days > 0) return `${days}日${hours}時間${mins}分`;
   if (hours > 0) return `${hours}時間${mins}分`;
   return `${mins}分`;
+}
+
+function dayKey(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}${String(d.getMonth()).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function calcStreak(logs: UrgeLog[]): number {
+  if (!logs.length) return 0;
+  const days = new Set(logs.map((l) => dayKey(l.ts)));
+  const today = new Date();
+  const todayKey = dayKey(today.getTime());
+  const yest = new Date(today);
+  yest.setDate(yest.getDate() - 1);
+  const yestKey = dayKey(yest.getTime());
+  if (!days.has(todayKey) && !days.has(yestKey)) return 0;
+  let streak = 0;
+  const cur = days.has(todayKey) ? new Date(today) : new Date(yest);
+  while (days.has(dayKey(cur.getTime()))) {
+    streak++;
+    cur.setDate(cur.getDate() - 1);
+  }
+  return streak;
+}
+
+export function calcOvercomeCount(logs: UrgeLog[]): number {
+  return logs.filter(
+    (l) =>
+      l.outcome === "calmed" ||
+      l.outcome === "reduced" ||
+      (!l.outcome && l.waitedSec >= 60),
+  ).length;
+}
+
+export function calcTodayOvercome(logs: UrgeLog[]): number {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return calcOvercomeCount(logs.filter((l) => l.ts >= start.getTime()));
+}
+
+export const MILESTONES = [1, 5, 10, 25, 50, 100, 200, 365];
+
+export function getMilestone(count: number): number | null {
+  return MILESTONES.includes(count) ? count : null;
 }

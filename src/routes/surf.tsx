@@ -9,6 +9,8 @@ import {
   uid,
   useLogs,
   useProfile,
+  calcOvercomeCount,
+  getMilestone,
   type UrgeType,
   type Trigger,
   type Outcome,
@@ -20,7 +22,8 @@ import {
   suggestOneAction,
   buildFeedback,
 } from "@/lib/voice";
-import { URGE_PROTOCOLS, buildPersonalInsight } from "@/lib/protocols";
+import { URGE_PROTOCOLS, buildPersonalInsight, calcTypeStat } from "@/lib/protocols";
+import { SoundControl } from "@/components/SoundControl";
 
 export const Route = createFileRoute("/surf")({
   component: SurfPage,
@@ -43,6 +46,15 @@ const DEFAULT_ALTERNATIVES = [
   "1分だけ外を歩く",
 ];
 
+function MilestoneBanner({ n }: { n: number }) {
+  return (
+    <div className="rounded-2xl border border-accent bg-accent/10 p-4 text-center shadow-[0_0_24px_oklch(0.88_0.16_200/0.3)]">
+      <p className="text-2xl font-light tracking-tight">🎉 {n}回達成！</p>
+      <p className="mt-1 text-xs text-muted-foreground">衝動を{n}回乗り越えました。脳が変わっています。</p>
+    </div>
+  );
+}
+
 function SurfPage() {
   const navigate = useNavigate();
   const { profile } = useProfile();
@@ -56,11 +68,8 @@ function SurfPage() {
   const startRef = useRef<number | null>(null);
   const [omakase, setOmakase] = useState<string>("");
 
-  const altActions = profile?.altActions?.length
-    ? profile.altActions
-    : DEFAULT_ALTERNATIVES;
+  const altActions = profile?.altActions?.length ? profile.altActions : DEFAULT_ALTERNATIVES;
 
-  // Recompute おまかせ when type changes (chosen at urge selection)
   useEffect(() => {
     if (type) setOmakase(suggestOneAction(type, altActions));
   }, [type, altActions]);
@@ -70,87 +79,65 @@ function SurfPage() {
     startRef.current = Date.now();
     setRemaining(SURF_DURATION);
     const i = setInterval(() => {
-      const elapsed = (Date.now() - (startRef.current ?? Date.now())) / 1000;
-      const rem = Math.max(0, SURF_DURATION - elapsed);
+      const el = (Date.now() - (startRef.current ?? Date.now())) / 1000;
+      const rem = Math.max(0, SURF_DURATION - el);
       setRemaining(rem);
-      if (rem <= 0) {
-        clearInterval(i);
-        setPhase("result");
-      }
+      if (rem <= 0) { clearInterval(i); setPhase("result"); }
     }, 100);
     return () => clearInterval(i);
   }, [phase]);
 
   const elapsed = SURF_DURATION - remaining;
 
-  // Phase A/B/C messages driven by voice persona
   const voice = profile?.voice ?? "calm";
-  const stageA = useMemo(() => voiceCalmingLines(voice), [voice]);
+  const stageACalmingLines = useMemo(() => voiceCalmingLines(voice), [voice]);
   const stageBPrefix = useMemo(() => voiceVisionPrefix(voice), [voice]);
   const stageCLine = useMemo(() => voiceClosingLine(voice), [voice]);
 
-  // Which stage are we in (0–30 / 30–60 / 60–90)
   const stage: "A" | "B" | "C" = elapsed < 30 ? "A" : elapsed < 60 ? "B" : "C";
-  const stageALineIndex = Math.min(stageA.length - 1, Math.floor(elapsed / 10));
+
+  // Phase A: rotate protocol phaseA lines every 10s, then fall back to voice calming
+  const phaseALines = type ? URGE_PROTOCOLS[type].phaseA : stageACalmingLines;
+  const phaseBLines = type ? URGE_PROTOCOLS[type].phaseB : [stageBPrefix];
+
+  const phaseAIdx = Math.floor(elapsed / 10) % phaseALines.length;
+  const phaseBIdx = Math.floor((elapsed - 30) / 10) % phaseBLines.length;
+
   const currentText =
-    stage === "A"
-      ? stageA[stageALineIndex]
-      : stage === "B"
-        ? stageBPrefix
-        : stageCLine;
+    stage === "A" ? phaseALines[phaseAIdx]
+    : stage === "B" ? phaseBLines[phaseBIdx]
+    : stageCLine;
 
   const startSurf = () => {
     if (!type) return;
     const id = uid();
     setLogId(id);
-    addLog({
-      id,
-      ts: Date.now(),
-      type,
-      intensity,
-      trigger: trigger ?? undefined,
-      waitedSec: 0,
-    });
+    addLog({ id, ts: Date.now(), type, intensity, trigger: trigger ?? undefined, waitedSec: 0 });
     setPhase("surf");
   };
 
   const finishWithOutcome = (outcome: Outcome) => {
-    let waited = SURF_DURATION;
     if (logId) {
-      waited = startRef.current
-        ? Math.round((Date.now() - startRef.current) / 1000)
-        : SURF_DURATION;
+      const waited = startRef.current ? Math.round((Date.now() - startRef.current) / 1000) : SURF_DURATION;
       updateLog(logId, { outcome, waitedSec: waited });
     }
     if (outcome === "acted") setPhase("acted");
     else setPhase("done");
   };
 
-  // Build feedback shown on "done"
   const feedback = useMemo(() => {
     if (phase !== "done") return [];
-    const waited = startRef.current
-      ? Math.round((Date.now() - startRef.current) / 1000)
-      : SURF_DURATION;
+    const waited = startRef.current ? Math.round((Date.now() - startRef.current) / 1000) : SURF_DURATION;
     const prev = logs.find((l) => l.id !== logId && l.waitedSec > 0)?.waitedSec;
-    return buildFeedback({
-      waitedSec: waited,
-      prevWaitedSec: prev,
-      hour: new Date().getHours(),
-      type: type ?? "other",
-      voice,
-      nextAction: omakase || altActions[0],
-    });
+    return buildFeedback({ waitedSec: waited, prevWaitedSec: prev, hour: new Date().getHours(), type: type ?? "other", voice, nextAction: omakase || altActions[0] });
   }, [phase, logId, logs, type, voice, omakase, altActions]);
 
   const progress = 1 - remaining / SURF_DURATION;
-  // breathing rhythm: 4 in / 6 out → 10s cycle, map to scale 0.85–1.15
   const breath = useMemo(() => {
     const t = (elapsed % 10) / 10;
-    // sinusoidal breathing
     const s = 1 + Math.sin(t * Math.PI * 2) * 0.13;
-    const phaseLabel = t < 0.4 ? "吸って" : t < 0.5 ? "止めて" : "吐いて";
-    return { scale: s, label: phaseLabel };
+    const label = t < 0.4 ? "吸って" : t < 0.5 ? "止めて" : "吐いて";
+    return { scale: s, label };
   }, [elapsed]);
 
   return (
@@ -163,25 +150,16 @@ function SurfPage() {
       </button>
 
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-16 pb-10">
+
         {phase === "select" && (
           <div className="animate-fade-in-up">
             <p className="text-[10px] tracking-[0.3em] text-accent">記録 / 01</p>
-            <h1 className="mt-2 text-3xl font-extralight tracking-tight">
-              今、どんな衝動がきた?
-            </h1>
-            <p className="mt-2 text-sm font-light text-muted-foreground">
-              名前をつけるだけで、前頭前野が静かに動き始めます。
-            </p>
+            <h1 className="mt-2 text-3xl font-extralight tracking-tight">今、どんな衝動がきた?</h1>
+            <p className="mt-2 text-sm font-light text-muted-foreground">名前をつけるだけで、前頭前野が静かに動き始めます。</p>
             <div className="mt-8 grid grid-cols-2 gap-3">
               {URGE_OPTIONS.map(([k, v]) => (
-                <button
-                  key={k}
-                  onClick={() => {
-                    setType(k);
-                    setPhase("trigger");
-                  }}
-                  className="rounded-2xl border border-border bg-white/5 p-5 text-left text-sm font-medium transition-colors hover:border-accent/40 hover:bg-accent/5"
-                >
+                <button key={k} onClick={() => { setType(k); setPhase("trigger"); }}
+                  className="rounded-2xl border border-border bg-white/5 p-5 text-left text-sm font-medium transition-colors hover:border-accent/40 hover:bg-accent/5">
                   {v}
                 </button>
               ))}
@@ -193,27 +171,17 @@ function SurfPage() {
           <div className="animate-fade-in-up">
             <p className="text-[10px] tracking-[0.3em] text-accent">記録 / 02</p>
             <h1 className="mt-2 text-3xl font-extralight tracking-tight">引き金は?</h1>
-            <p className="mt-2 text-sm font-light text-muted-foreground">
-              わからなくて大丈夫。スキップもできます。
-            </p>
+            <p className="mt-2 text-sm font-light text-muted-foreground">わからなくて大丈夫。スキップもできます。</p>
             <div className="mt-8 grid grid-cols-2 gap-3">
               {TRIGGER_OPTIONS.map(([k, v]) => (
-                <button
-                  key={k}
-                  onClick={() => {
-                    setTrigger(k);
-                    setPhase("intensity");
-                  }}
-                  className="rounded-2xl border border-border bg-white/5 p-4 text-left text-sm hover:border-white/20"
-                >
+                <button key={k} onClick={() => { setTrigger(k); setPhase("intensity"); }}
+                  className="rounded-2xl border border-border bg-white/5 p-4 text-left text-sm hover:border-white/20">
                   {v}
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => setPhase("intensity")}
-              className="mt-6 w-full text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
-            >
+            <button onClick={() => setPhase("intensity")}
+              className="mt-6 w-full text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
               スキップ →
             </button>
           </div>
@@ -223,30 +191,17 @@ function SurfPage() {
           <div className="flex flex-1 flex-col animate-fade-in-up">
             <p className="text-[10px] tracking-[0.3em] text-accent">記録 / 03</p>
             <h1 className="mt-2 text-3xl font-extralight tracking-tight">強度は?</h1>
-            <p className="mt-2 text-sm font-light text-muted-foreground">
-              1（さざ波） 〜 10（津波）
-            </p>
+            <p className="mt-2 text-sm font-light text-muted-foreground">1（さざ波） 〜 10（津波）</p>
             <div className="mt-12 flex flex-1 flex-col items-center justify-center">
-              <div className="text-7xl font-extralight tabular-nums tracking-tighter text-accent">
-                {intensity}
-              </div>
-              <input
-                type="range"
-                min={1}
-                max={10}
-                value={intensity}
-                onChange={(e) => setIntensity(Number(e.target.value))}
-                className="mt-10 w-full accent-[oklch(0.88_0.16_200)]"
-              />
+              <div className="text-7xl font-extralight tabular-nums tracking-tighter text-accent">{intensity}</div>
+              <input type="range" min={1} max={10} value={intensity} onChange={(e) => setIntensity(Number(e.target.value))}
+                className="mt-10 w-full accent-[oklch(0.88_0.16_200)]" />
               <div className="mt-2 flex w-full justify-between font-mono text-[10px] text-muted-foreground">
-                <span>01</span>
-                <span>10</span>
+                <span>01</span><span>10</span>
               </div>
             </div>
-            <button
-              onClick={startSurf}
-              className="mt-10 w-full rounded-full bg-accent py-4 text-base font-medium text-accent-foreground shadow-[var(--accent-glow)] transition-opacity hover:opacity-90"
-            >
+            <button onClick={startSurf}
+              className="mt-10 w-full rounded-full bg-accent py-4 text-base font-medium text-accent-foreground shadow-[var(--accent-glow)] transition-opacity hover:opacity-90">
               90秒、波を眺める
             </button>
             {omakase && (
@@ -260,91 +215,45 @@ function SurfPage() {
 
         {phase === "surf" && (
           <div className="relative flex flex-1 flex-col items-center justify-between gap-6 py-4">
-            {/* Deep ocean background */}
             <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(60% 50% at 50% 60%, oklch(0.22 0.06 230 / 0.5), transparent 70%)",
-                }}
-              />
+              <div className="absolute inset-0" style={{ background: "radial-gradient(60% 50% at 50% 60%, oklch(0.22 0.06 230 / 0.5), transparent 70%)" }} />
               <div className="absolute left-1/2 top-1/2 size-[520px] -translate-x-1/2 -translate-y-1/2 animate-deep-breath rounded-full bg-accent/10 blur-3xl" />
             </div>
 
-            <div className="text-center animate-fade-in-up">
-              <p className="text-[10px] tracking-[0.3em] text-accent">観察モード</p>
-              <p className="mt-3 text-base font-light text-foreground/90 transition-opacity duration-700">
-                {currentText}
-              </p>
+            <div className="flex w-full items-start justify-between">
+              <div className="text-center animate-fade-in-up flex-1">
+                <p className="text-[10px] tracking-[0.3em] text-accent">観察モード</p>
+                <p className="mt-3 text-base font-light text-foreground/90 transition-opacity duration-700">{currentText}</p>
+              </div>
+              <SoundControl autoStart={true} />
             </div>
 
             <div className="relative flex items-center justify-center">
-              {/* tide ripples */}
               <div className="absolute size-72 animate-tide rounded-full border border-accent/30" />
-              <div
-                className="absolute size-72 animate-tide rounded-full border border-accent/20"
-                style={{ animationDelay: "2.6s" }}
-              />
-              <div
-                className="absolute size-72 animate-tide rounded-full border border-accent/15"
-                style={{ animationDelay: "5.2s" }}
-              />
+              <div className="absolute size-72 animate-tide rounded-full border border-accent/20" style={{ animationDelay: "2.6s" }} />
+              <div className="absolute size-72 animate-tide rounded-full border border-accent/15" style={{ animationDelay: "5.2s" }} />
 
-              {/* timer ring */}
               <svg viewBox="0 0 200 200" className="size-72 -rotate-90">
                 <circle cx="100" cy="100" r="90" stroke="oklch(1 0 0 / 0.06)" strokeWidth="2" fill="none" />
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="90"
-                  stroke="oklch(0.88 0.16 200)"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeDasharray={2 * Math.PI * 90}
-                  strokeDashoffset={2 * Math.PI * 90 * (1 - progress)}
-                  strokeLinecap="round"
-                  className="transition-[stroke-dashoffset] duration-100"
-                  style={{ filter: "drop-shadow(0 0 8px oklch(0.88 0.16 200 / 0.7))" }}
-                />
+                <circle cx="100" cy="100" r="90" stroke="oklch(0.88 0.16 200)" strokeWidth="2" fill="none"
+                  strokeDasharray={2 * Math.PI * 90} strokeDashoffset={2 * Math.PI * 90 * (1 - progress)}
+                  strokeLinecap="round" className="transition-[stroke-dashoffset] duration-100"
+                  style={{ filter: "drop-shadow(0 0 8px oklch(0.88 0.16 200 / 0.7))" }} />
               </svg>
 
-              {/* breathing orb */}
-              <div
-                className="absolute size-40 rounded-full bg-accent/20 blur-2xl transition-transform duration-1000 ease-in-out"
-                style={{ transform: `scale(${breath.scale})` }}
-              />
-              <div
-                className="absolute size-32 rounded-full border border-accent/40 bg-accent/5 transition-transform duration-1000 ease-in-out"
-                style={{ transform: `scale(${breath.scale})` }}
-              />
+              <div className="absolute size-40 rounded-full bg-accent/20 blur-2xl transition-transform duration-1000 ease-in-out" style={{ transform: `scale(${breath.scale})` }} />
+              <div className="absolute size-32 rounded-full border border-accent/40 bg-accent/5 transition-transform duration-1000 ease-in-out" style={{ transform: `scale(${breath.scale})` }} />
 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-6xl font-extralight tabular-nums tracking-tighter">
-                  {Math.ceil(remaining)}
-                </span>
-                <span className="mt-1 text-[10px] tracking-[0.3em] text-accent">
-                  {breath.label}
-                </span>
+                <span className="text-6xl font-extralight tabular-nums tracking-tighter">{Math.ceil(remaining)}</span>
+                <span className="mt-1 text-[10px] tracking-[0.3em] text-accent">{breath.label}</span>
               </div>
             </div>
 
-            {/* Stage-aware card under the orb */}
             {stage === "A" && profile?.reason && (
               <div className="w-full max-w-xs animate-fade-in-up rounded-2xl border border-border bg-white/5 p-4 text-center backdrop-blur-sm">
-                <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">
-                  まず、思い出してみよう
-                </p>
+                <p className="mb-1 text-[10px] tracking-widest text-muted-foreground">まず、思い出してみよう</p>
                 <p className="text-sm font-light leading-relaxed">「{profile.reason}」</p>
-              </div>
-            )}
-
-            {stage === "A" && type && (
-              <div className="w-full animate-fade-in-up rounded-2xl border border-border bg-white/[0.03] p-3 text-center">
-                <p className="text-[10px] tracking-widest text-muted-foreground">タイプ別メモ</p>
-                <p className="mt-1 text-xs font-light leading-relaxed text-foreground/80">
-                  {URGE_PROTOCOLS[type].calming}
-                </p>
               </div>
             )}
 
@@ -354,15 +263,7 @@ function SurfPage() {
                 {profile?.vision ? (
                   <p className="text-sm font-light leading-relaxed">{profile.vision}</p>
                 ) : (
-                  <p className="text-sm font-light leading-relaxed text-muted-foreground">
-                    この習慣を手放せたら、あなたはどんな自分になれますか？
-                    <br />（あとで「未来設計」から設定できます）
-                  </p>
-                )}
-                {profile?.voice === "future" && profile.futureSelfWords && (
-                  <p className="mt-3 border-t border-accent/20 pt-3 text-xs italic leading-relaxed text-foreground/80">
-                    未来の自分から：「{profile.futureSelfWords}」
-                  </p>
+                  <p className="text-sm font-light leading-relaxed text-muted-foreground">この習慣を手放せたら、あなたはどんな自分になれますか？</p>
                 )}
               </div>
             )}
@@ -372,25 +273,16 @@ function SurfPage() {
                 <div className="rounded-2xl border border-accent/40 bg-accent/10 p-4 text-center backdrop-blur-sm">
                   <p className="mb-1 text-[10px] tracking-widest text-accent">おまかせの一手</p>
                   <p className="text-lg font-medium">{omakase}</p>
-                  <button
-                    onClick={() => type && setOmakase(suggestOneAction(type, altActions))}
-                    className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
-                  >
+                  <button onClick={() => type && setOmakase(suggestOneAction(type, altActions))}
+                    className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
                     別の提案 →
                   </button>
                 </div>
-                {profile?.antiVision && (
-                  <div className="rounded-2xl border border-border bg-white/5 p-3 text-center text-xs font-light leading-relaxed text-muted-foreground">
-                    続けたままの未来：{profile.antiVision}
-                  </div>
-                )}
               </div>
             )}
 
-            <button
-              onClick={() => setPhase("result")}
-              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
-            >
+            <button onClick={() => setPhase("result")}
+              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
               先へ進む →
             </button>
           </div>
@@ -399,19 +291,12 @@ function SurfPage() {
         {phase === "result" && (
           <div className="flex flex-1 flex-col justify-center animate-fade-in-up">
             <p className="text-[10px] tracking-[0.3em] text-accent">観察完了</p>
-            <h1 className="mt-2 text-3xl font-extralight tracking-tight">
-              今、どう感じる?
-            </h1>
-            <p className="mt-2 text-sm font-light text-muted-foreground">
-              どの答えでも、ここでは責められません。記録できた時点で前進です。
-            </p>
+            <h1 className="mt-2 text-3xl font-extralight tracking-tight">今、どう感じる?</h1>
+            <p className="mt-2 text-sm font-light text-muted-foreground">どの答えでも、記録できた時点で前進です。</p>
             <div className="mt-10 space-y-3">
               {(Object.keys(OUTCOME_LABELS) as Outcome[]).map((o) => (
-                <button
-                  key={o}
-                  onClick={() => finishWithOutcome(o)}
-                  className="w-full rounded-2xl border border-border bg-white/5 p-5 text-left text-base font-medium transition-colors hover:border-accent/40 hover:bg-accent/5"
-                >
+                <button key={o} onClick={() => finishWithOutcome(o)}
+                  className="w-full rounded-2xl border border-border bg-white/5 p-5 text-left text-base font-medium transition-colors hover:border-accent/40 hover:bg-accent/5">
                   {OUTCOME_LABELS[o]}
                 </button>
               ))}
@@ -422,100 +307,95 @@ function SurfPage() {
         {phase === "acted" && (
           <div className="flex flex-1 flex-col justify-center animate-fade-in-up">
             <p className="text-[10px] tracking-[0.3em] text-accent">気づけた、それだけで前進</p>
-            <h1 className="mt-3 text-3xl font-extralight tracking-tight">
-              次の波が来たら、これを試そう。
-            </h1>
-            <p className="mt-3 text-sm font-light leading-relaxed text-muted-foreground">
-              実行した自分を責めなくていい。脳の癖は、何度も上書きすることで変わります。次の1回のために、いまできる小さな行動を眺めてみてください。
-            </p>
+            <h1 className="mt-3 text-3xl font-extralight tracking-tight">次の波が来たら、これを試そう。</h1>
+            <p className="mt-3 text-sm font-light leading-relaxed text-muted-foreground">実行した自分を責めなくていい。脳の癖は、何度も上書きすることで変わります。</p>
             <div className="mt-8 space-y-2">
-              {altActions.map((a, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-white/5 p-4"
-                >
-                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-accent/40 font-mono text-[10px] text-accent">
-                    {i + 1}
-                  </div>
+              {(type ? URGE_PROTOCOLS[type].alternatives : altActions).map((a, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-2xl border border-border bg-white/5 p-4">
+                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full border border-accent/40 font-mono text-[10px] text-accent">{i + 1}</div>
                   <p className="text-sm font-light">{a}</p>
                 </div>
               ))}
             </div>
-            {!profile?.altActions?.length && (
-              <button
-                onClick={() => navigate({ to: "/future" })}
-                className="mt-6 w-full rounded-2xl border border-accent/30 bg-accent/5 p-4 text-sm font-medium hover:border-accent/60"
-              >
-                自分専用の対策を設定する →
-              </button>
-            )}
-            <button
-              onClick={() => navigate({ to: "/" })}
-              className="mt-6 w-full rounded-full border border-border bg-white/5 py-3 text-sm font-medium hover:border-accent/40"
-            >
+            <button onClick={() => navigate({ to: "/" })}
+              className="mt-6 w-full rounded-full border border-border bg-white/5 py-3 text-sm font-medium hover:border-accent/40">
               ホームへ戻る
             </button>
           </div>
         )}
 
-        {phase === "done" && (
-          <div className="flex flex-1 flex-col justify-center animate-fade-in-up">
-            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-accent/40 shadow-[var(--accent-glow)]">
-              <div className="size-2.5 rounded-full bg-accent" />
-            </div>
-            <p className="mt-6 text-center text-[10px] tracking-[0.3em] text-accent">
-              記録完了 / 振り返り
-            </p>
-            <h1 className="mt-2 text-center text-2xl font-extralight tracking-tight">
-              気づけたあなたへ。
-            </h1>
+        {phase === "done" && (() => {
+          const overcomeCount = calcOvercomeCount(logs);
+          const milestone = getMilestone(overcomeCount);
+          const tStat = overcomeCount > 0 && type ? calcTypeStat(overcomeCount, type) : null;
+          const insightLines = type ? URGE_PROTOCOLS[type].insights : [];
+          const insightLine = insightLines.length > 0 ? insightLines[logs.length % insightLines.length] : null;
+          const personal = buildPersonalInsight(logs, profile);
 
-            <div className="mt-8 space-y-2">
-              {feedback.map((line, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm font-light leading-relaxed"
-                >
-                  <div className="mt-1 size-1.5 shrink-0 rounded-full bg-accent shadow-[var(--accent-glow)]" />
-                  <p>{line}</p>
-                </div>
-              ))}
-              {(() => {
-                const personal = buildPersonalInsight(logs, profile);
-                if (!personal) return null;
-                return (
-                  <div className="flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/[0.05] p-4 text-sm font-light leading-relaxed">
-                    <div className="mt-1 size-1.5 shrink-0 rounded-full bg-accent shadow-[var(--accent-glow)]" />
-                    <p>{personal}</p>
-                  </div>
-                );
-              })()}
-              {type && (
-                <div className="rounded-2xl border border-border bg-white/[0.03] p-4 text-xs font-light leading-relaxed text-muted-foreground">
-                  <p className="mb-1 text-[10px] tracking-widest text-accent">
-                    なぜ今のが効いたか
-                  </p>
-                  {URGE_PROTOCOLS[type].science}
+          return (
+            <div className="flex flex-1 flex-col justify-center animate-fade-in-up space-y-4">
+              {milestone ? (
+                <MilestoneBanner n={milestone} />
+              ) : (
+                <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-accent/40 shadow-[var(--accent-glow)]">
+                  <div className="size-2 rounded-full bg-accent" />
                 </div>
               )}
-            </div>
 
-            <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/5 p-4">
-              <p className="mb-1 text-[10px] tracking-widest text-accent">次の一手</p>
-              <p className="text-base font-medium">{omakase || altActions[0]}</p>
-              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                完璧にやらなくていい。覚えていたら、そっと試してみてください。
-              </p>
-            </div>
+              <p className="text-center text-[10px] tracking-[0.3em] text-accent">記録完了 / 振り返り</p>
+              <h1 className="text-center text-2xl font-extralight tracking-tight">気づけたあなたへ。</h1>
 
-            <button
-              onClick={() => navigate({ to: "/" })}
-              className="mt-8 w-full rounded-full border border-border bg-white/5 py-3 text-sm font-medium hover:border-accent/40"
-            >
-              ホームへ戻る
-            </button>
-          </div>
-        )}
+              {tStat && (
+                <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4 text-center">
+                  <p className="text-[10px] tracking-widest text-accent">{tStat.icon} {tStat.label}</p>
+                  <p className="mt-1 text-2xl font-light">{tStat.display}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">累計{overcomeCount}回乗り越えた結果</p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {feedback.map((line, i) => (
+                  <div key={i} className="flex items-start gap-3 rounded-2xl border border-border bg-white/5 p-4 text-sm font-light leading-relaxed">
+                    <div className="mt-1 size-1.5 shrink-0 rounded-full bg-accent shadow-[var(--accent-glow)]" />
+                    <p>{line}</p>
+                  </div>
+                ))}
+
+                {insightLine && (
+                  <div className="flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/[0.05] p-4 text-sm font-light leading-relaxed">
+                    <div className="mt-1 size-1.5 shrink-0 rounded-full bg-accent" />
+                    <p>{insightLine}</p>
+                  </div>
+                )}
+
+                {personal && (
+                  <div className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm font-light leading-relaxed">
+                    <div className="mt-1 size-1.5 shrink-0 rounded-full bg-accent/60" />
+                    <p>{personal}</p>
+                  </div>
+                )}
+
+                {type && (
+                  <div className="rounded-2xl border border-border bg-white/[0.03] p-4 text-xs font-light leading-relaxed text-muted-foreground">
+                    <p className="mb-1 text-[10px] tracking-widest text-accent">なぜ今のが効いたか</p>
+                    {URGE_PROTOCOLS[type].science}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4">
+                <p className="mb-1 text-[10px] tracking-widest text-accent">次の一手</p>
+                <p className="text-base font-medium">{omakase || altActions[0]}</p>
+              </div>
+
+              <button onClick={() => navigate({ to: "/" })}
+                className="w-full rounded-full border border-border bg-white/5 py-3 text-sm font-medium hover:border-accent/40">
+                ホームへ戻る
+              </button>
+            </div>
+          );
+        })()}
+
       </div>
     </div>
   );
